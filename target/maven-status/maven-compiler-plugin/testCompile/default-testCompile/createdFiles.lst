@@ -1,0 +1,5 @@
+com\example\audit\config\KafkaAppenderTest.class
+com\example\audit\service\AuditServiceTest.class
+com\example\audit\controller\AuditControllerTest.class
+com\example\audit\config\AuditConfigTest.class
+com\example\audit\aspect\AuditAspectTest.class

@@ -1,0 +1,16 @@
+com\example\audit\listener\AuditEventListener.class
+com\example\audit\service\AuditService.class
+com\example\audit\aspect\AuditAspect.class
+com\example\audit\config\KafkaAppender$1.class
+com\example\audit\entity\FailedAuditLog.class
+com\example\audit\repository\AuditLogRepository.class
+com\example\audit\controller\AuditController.class
+com\example\audit\AuditFrameworkApplication.class
+com\example\audit\entity\AuditLog.class
+com\example\audit\config\AuditConfig.class
+com\example\audit\annotation\Auditable.class
+com\example\audit\event\AuditEvent.class
+com\example\audit\config\AuditProperties.class
+com\example\audit\config\DatabaseAppender.class
+com\example\audit\repository\FailedAuditLogRepository.class
+com\example\audit\config\KafkaAppender.class
