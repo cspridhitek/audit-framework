@@ -5,7 +5,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 
 public class DigitalSignatureUtil {
-    private static final String SECRET_KEY = "auditLogsRidhitek";
+    private static final String SECRET_KEY = "MySecretKeyForAuditLogs";
 
     public static String signLog(String action, String username, String timestamp) {
         try {
