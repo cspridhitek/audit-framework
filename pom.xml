@@ -59,7 +59,7 @@
         <dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.4</version>
+			<version>1.18.30</version>
 			<scope>provided</scope>
 		</dependency>
         <dependency>
@@ -99,6 +99,18 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.1</version>  <!-- Use a stable version -->
+            <configuration>
+                <release>17</release>  <!-- Ensure compatibility with Java 17 -->
+                <compilerArgs>
+                    <arg>--add-opens</arg>
+                    <arg>jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+                </compilerArgs>
+            </configuration>
+        </plugin>
         </plugins>
     </build>
 </project>

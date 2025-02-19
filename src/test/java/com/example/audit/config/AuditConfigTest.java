@@ -1,7 +1,5 @@
 package com.example.audit.config;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import com.example.audit.service.AuditService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.kafka.core.KafkaTemplate;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @TestPropertySource(properties = {"audit.handler.type=database"})
