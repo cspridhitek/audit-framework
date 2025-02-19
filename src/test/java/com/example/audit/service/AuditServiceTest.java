@@ -28,7 +28,7 @@ public class AuditServiceTest {
 
     @Test
     public void testSaveAuditLog() {
-        AuditLog log = new AuditLog("action", "oldValue", "newValue", "user");
+        AuditLog log = new AuditLog();
         when(auditLogRepository.save(log)).thenReturn(log);
 
         AuditLog savedLog = auditService.saveAuditLog(log);
@@ -37,8 +37,8 @@ public class AuditServiceTest {
 
     @Test
     public void testGetAllAuditLogs() {
-        AuditLog log1 = new AuditLog("action1", "oldValue1", "newValue1", "user1");
-        AuditLog log2 = new AuditLog("action2", "oldValue2", "newValue2", "user2");
+        AuditLog log1 = new AuditLog();
+        AuditLog log2 = new AuditLog();
         List<AuditLog> logs = Arrays.asList(log1, log2);
 
         when(auditLogRepository.findAll()).thenReturn(logs);
@@ -49,7 +49,7 @@ public class AuditServiceTest {
 
     @Test
     public void testGetAuditLogById() {
-        AuditLog log = new AuditLog("action", "oldValue", "newValue", "user");
+        AuditLog log = new AuditLog();
         when(auditLogRepository.findById(1L)).thenReturn(Optional.of(log));
 
         AuditLog retrievedLog = auditService.getAuditLogById(1L);

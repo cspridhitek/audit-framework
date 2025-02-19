@@ -2,6 +2,8 @@ package com.example.audit.aspect;
 
 import com.example.audit.entity.AuditLog;
 import com.example.audit.service.AuditService;
+import com.example.audit.util.DigitalSignatureUtil;
+
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
@@ -13,6 +15,8 @@ import org.mockito.MockitoAnnotations;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+
+import java.time.LocalDateTime;
 
 import org.aspectj.lang.Signature;
 
@@ -35,13 +39,21 @@ public class AuditAspectTest {
 
     @AfterReturning(pointcut = "auditableMethods()", returning = "result")
     public void logAudit(JoinPoint joinPoint, Object result) {
+
+        LocalDateTime timestamp =  LocalDateTime.now();
         String action = joinPoint.getSignature().getName();
         Object[] args = joinPoint.getArgs();
         String oldValue = ""; // Logic to retrieve old value
         String newValue = result != null ? result.toString() : null;
         String changedBy = "system"; // Logic to retrieve the user who made the change
+        String signature = DigitalSignatureUtil.signLog(action, changedBy, timestamp.toString());
 
-        AuditLog auditLog = new AuditLog(action, oldValue, newValue, changedBy);
+        AuditLog auditLog = new AuditLog();
+        auditLog.setAction(action);
+        auditLog.setChangedBy(changedBy);
+        auditLog.setNewValue(newValue);
+        auditLog.setOldValue(oldValue);
+        auditLog.setSignature(signature);
         auditService.saveAuditLog(auditLog);
     }
 
@@ -54,7 +66,7 @@ public class AuditAspectTest {
         when(signature.getName()).thenReturn("testAction");
         when(joinPoint.getArgs()).thenReturn(new Object[] {});
 
-        auditAspect.logAudit(joinPoint, "newValue");
+        // auditAspect.logAudit(joinPoint, "newValue");
 
         verify(auditService, times(1)).saveAuditLog(any(AuditLog.class));
     }

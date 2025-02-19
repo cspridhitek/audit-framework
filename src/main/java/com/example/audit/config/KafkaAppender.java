@@ -35,7 +35,6 @@ public class KafkaAppender {
     @Value("${kafka.topic.name:default-audit-topic}")
     private String auditTopic;
 
-    @Autowired
     public KafkaAppender(KafkaTemplate<String, String> kafkaTemplate, AuditService auditService, FailedAuditLogRepository failedAuditLogRepository) {
         this.kafkaTemplate = kafkaTemplate;
         this.auditService = auditService;
@@ -55,7 +54,10 @@ public class KafkaAppender {
         backoff = @Backoff(delayExpression = "#{@retryBackoffDelay}")
     )
     public void logToKafka(String actor, String action, String details) {
-        AuditLog auditLog = new AuditLog(action, "", details, actor);
+        // AuditLog auditLog = new AuditLog(action, "", details, actor);
+        AuditLog auditLog = new AuditLog();
+        auditLog.setAction(action);
+        auditLog.setChangedBy(actor);
         String message = auditLog.toString();
         ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(auditTopic, message);
 

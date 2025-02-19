@@ -2,7 +2,6 @@ package com.example.audit.service;
 
 import com.example.audit.entity.AuditLog;
 import com.example.audit.repository.AuditLogRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,7 +11,6 @@ public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
 
-    @Autowired
     public AuditService(AuditLogRepository auditLogRepository) {
         this.auditLogRepository = auditLogRepository;
     }

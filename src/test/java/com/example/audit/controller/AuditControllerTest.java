@@ -28,8 +28,8 @@ public class AuditControllerTest {
 
     @Test
     public void testGetAllAuditLogs() {
-        AuditLog log1 = new AuditLog("action1", "oldValue1", "newValue1", "user1");
-        AuditLog log2 = new AuditLog("action2", "oldValue2", "newValue2", "user2");
+        AuditLog log1 = new AuditLog();
+        AuditLog log2 = new AuditLog();
         List<AuditLog> logs = Arrays.asList(log1, log2);
 
         when(auditService.getAllAuditLogs()).thenReturn(logs);
@@ -41,7 +41,8 @@ public class AuditControllerTest {
 
     @Test
     public void testGetAuditLogById() {
-        AuditLog log = new AuditLog("action", "oldValue", "newValue", "user");
+        
+        AuditLog log = new AuditLog();
         when(auditService.getAuditLogById(1L)).thenReturn(log);
 
         ResponseEntity<AuditLog> response = auditController.getAuditLogById(1L);
@@ -51,7 +52,7 @@ public class AuditControllerTest {
 
     @Test
     public void testCreateAuditLog() {
-        AuditLog log = new AuditLog("action", "oldValue", "newValue", "user");
+        AuditLog log = new AuditLog();
         when(auditService.saveAuditLog(log)).thenReturn(log);
 
         ResponseEntity<AuditLog> response = auditController.createAuditLog(log);
