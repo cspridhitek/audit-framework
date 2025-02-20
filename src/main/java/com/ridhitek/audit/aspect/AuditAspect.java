@@ -2,6 +2,7 @@ package com.ridhitek.audit.aspect;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ridhitek.audit.entity.Employee;
 import com.ridhitek.audit.repository.EmployeeRepository;
 import com.ridhitek.audit.service.EmployeeService;
@@ -71,8 +72,8 @@ public class AuditAspect {
         // Create and save audit log
         AuditLogEntity audit = new AuditLogEntity();
         audit.setAction(action);
-        audit.setOldValue(String.valueOf(oldEmployee));
-        audit.setNewValue(newEmployee != null ? String.valueOf(newEmployee) : null);
+        audit.setOldValue(new ObjectMapper().writeValueAsString(oldEmployee));
+        audit.setNewValue(newEmployee != null ? new ObjectMapper().writeValueAsString(newEmployee) : null);
         audit.setUserName(changedBy);
         audit.setDeviceDetails(ipAddress);
         LocalDateTime timeStamp = LocalDateTime.now();
