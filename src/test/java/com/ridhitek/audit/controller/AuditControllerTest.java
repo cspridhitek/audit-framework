@@ -1,5 +1,6 @@
 package com.ridhitek.audit.controller;
 
+import com.ridhitek.audit.dto.AuditLogDTO;
 import com.ridhitek.audit.entity.AuditLogEntity;
 import com.ridhitek.audit.service.AuditService;
 import org.junit.jupiter.api.Test;
@@ -28,13 +29,13 @@ public class AuditControllerTest {
 
     @Test
     public void testGetAllAuditLogs() {
-        AuditLogEntity log1 = new AuditLogEntity();
-        AuditLogEntity log2 = new AuditLogEntity();
-        List<AuditLogEntity> logs = Arrays.asList(log1, log2);
+        AuditLogDTO log1 = new AuditLogDTO();
+        AuditLogDTO log2 = new AuditLogDTO();
+        List<AuditLogDTO> logs = Arrays.asList(log1, log2);
 
         when(auditService.getAllAuditLogs()).thenReturn(logs);
 
-        ResponseEntity<List<AuditLogEntity>> response = auditController.getAllAuditLogs();
+        ResponseEntity<List<AuditLogDTO>> response = auditController.getAllAuditLogs();
         assertEquals(200, response.getStatusCodeValue());
         assertEquals(2, response.getBody().size());
     }

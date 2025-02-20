@@ -1,5 +1,6 @@
 package com.ridhitek.audit.service;
 
+import com.ridhitek.audit.dto.AuditLogDTO;
 import com.ridhitek.audit.entity.AuditLogEntity;
 import com.ridhitek.audit.repository.AuditLogRepository;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ public class AuditServiceTest {
 
         when(auditLogRepository.findAll()).thenReturn(logs);
 
-        List<AuditLogEntity> retrievedLogs = auditService.getAllAuditLogs();
+        List<AuditLogDTO> retrievedLogs = auditService.getAllAuditLogs();
         assertEquals(2, retrievedLogs.size());
     }
 

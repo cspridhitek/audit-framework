@@ -53,7 +53,6 @@ public class AuditAspect {
         // Extract ID from Employee argument
         for (Object arg : args) {
             if (arg instanceof Employee) {
-                newEmployee = (Employee) arg;
                 employeeId = ((Employee) arg).getId(); // Extract ID
                 break;
             }
@@ -65,6 +64,8 @@ public class AuditAspect {
         // Execute method
         result = joinPoint.proceed();
 
+        // 🔹 Capture the new value after insertion/update
+         newEmployee = (Employee) result;
         // Capture user & request details
         String changedBy = "Nirmala";
         String ipAddress = request.getRemoteAddr();
@@ -72,7 +73,7 @@ public class AuditAspect {
         // Create and save audit log
         AuditLogEntity audit = new AuditLogEntity();
         audit.setAction(action);
-        audit.setOldValue(new ObjectMapper().writeValueAsString(oldEmployee));
+        audit.setOldValue(oldEmployee != null ? new ObjectMapper().writeValueAsString(oldEmployee): null);
         audit.setNewValue(newEmployee != null ? new ObjectMapper().writeValueAsString(newEmployee) : null);
         audit.setUserName(changedBy);
         audit.setDeviceDetails(ipAddress);

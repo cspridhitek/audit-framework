@@ -1,12 +1,16 @@
 package com.ridhitek.audit.controller;
 
+import com.ridhitek.audit.dto.AuditLogDTO;
+import org.springframework.beans.BeanUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.ridhitek.audit.annotation.Auditable;
 import com.ridhitek.audit.entity.AuditLogEntity;
 import com.ridhitek.audit.service.AuditService;
+
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin(origins = "*")
@@ -20,15 +24,18 @@ public class AuditController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AuditLogEntity>> getAllAuditLogs() {
+    public ResponseEntity<List<AuditLogDTO>> getAllAuditLogs() {
         List<AuditLogEntity> auditLogs = auditService.getAllAuditLogs();
-        return ResponseEntity.ok(auditLogs);
+        List<AuditLogDTO> auditLogDTOS = auditLogs.stream().map(emp ->
+                new AuditLogDTO(emp.getUserName(), emp.getAction(), emp.getOldValue(),
+                        emp.getDeviceDetails(), emp.getTimestamp(), emp.getNewValue())).collect(Collectors.toList());
+        return ResponseEntity.ok(auditLogDTOS);
     }
 
     @GetMapping("/test")
     @Auditable(action = "TEST_ACTION")
     public void testAudit() {
-        
+
     }
 
     @GetMapping("/{id}")
