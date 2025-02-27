@@ -2,8 +2,10 @@ package com.ridhitek.audit.config;
 
 import com.ridhitek.audit.entity.AuditLogEntity;
 import com.ridhitek.audit.entity.FailedAuditLog;
-import com.ridhitek.audit.service.AuditService;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
+import com.ridhitek.audit.service.AuditService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -12,13 +14,12 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 
 @Component
 public class KafkaAppender {
+
     private static final Logger logger = LoggerFactory.getLogger(KafkaAppender.class);
 
     private final KafkaTemplate<String, String> kafkaTemplate;
@@ -48,17 +49,17 @@ public class KafkaAppender {
      * @param details additional details about the action
      */
     @Retryable(
-        value = { Exception.class },
-        maxAttemptsExpression = "#{@retryMaxAttempts}",
-        backoff = @Backoff(delayExpression = "#{@retryBackoffDelay}")
+            value = {Exception.class},
+            maxAttemptsExpression = "#{@retryMaxAttempts}",
+            backoff = @Backoff(delayExpression = "#{@retryBackoffDelay}")
     )
     public void logToKafka(String actor, String action, String details) {
         // AuditLog auditLog = new AuditLog(action, "", details, actor);
         AuditLogEntity auditLog = new AuditLogEntity();
-        auditLog.setAction(action);
-        auditLog.setUserName(actor);
+//        auditLog.setAction(action);
+//        auditLog.setUserName(actor);
         String message = auditLog.toString();
-        ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(auditTopic, message);
+        ListenableFuture<SendResult<String, String>> future = (ListenableFuture<SendResult<String, String>>) kafkaTemplate.send(auditTopic, message);
 
         future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
             @Override
@@ -96,3 +97,4 @@ public class KafkaAppender {
         }
     }
 }
+

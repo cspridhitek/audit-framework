@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ridhitek.audit.entity.Employee;
+import com.ridhitek.audit.producer.AuditLogProducer;
 import com.ridhitek.audit.repository.EmployeeRepository;
 import com.ridhitek.audit.service.EmployeeService;
 import org.apache.logging.log4j.LogManager;
@@ -38,6 +39,9 @@ public class AuditAspect {
 
     @Autowired
     private HttpServletRequest request; // For capturing IP & User details
+
+    @Autowired
+    private AuditLogProducer auditLogProducer;
 
     @Around("@annotation(auditable)")
     public Object logAudit(ProceedingJoinPoint joinPoint, Auditable auditable) throws Throwable {
@@ -80,7 +84,7 @@ public class AuditAspect {
         LocalDateTime timeStamp = LocalDateTime.now();
         audit.setTimestamp(timeStamp);
         audit.setSignature(DigitalSignatureUtil.signLog(action, changedBy, timeStamp.toString()));
-        auditLogRepository.save(audit);
+        auditLogProducer.sendAuditLog(audit);
 
         return result;
     }
