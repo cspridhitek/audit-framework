@@ -29,9 +29,9 @@ public class AuditControllerTest {
 
     @Test
     public void testGetAllAuditLogs() {
-        AuditLogDTO log1 = new AuditLogDTO();
-        AuditLogDTO log2 = new AuditLogDTO();
-        List<AuditLogDTO> logs = Arrays.asList(log1, log2);
+        AuditLogEntity log1 = new AuditLogEntity();
+        AuditLogEntity log2 = new AuditLogEntity();
+        List<AuditLogEntity> logs = Arrays.asList(log1, log2);
 
         when(auditService.getAllAuditLogs()).thenReturn(logs);
 

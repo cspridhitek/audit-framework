@@ -44,7 +44,7 @@ public class AuditServiceTest {
 
         when(auditLogRepository.findAll()).thenReturn(logs);
 
-        List<AuditLogDTO> retrievedLogs = auditService.getAllAuditLogs();
+        List<AuditLogEntity> retrievedLogs = auditService.getAllAuditLogs();
         assertEquals(2, retrievedLogs.size());
     }
 
