@@ -2,6 +2,7 @@ package com.ridhitek.audit.entity;
 
 
 
+import com.ridhitek.audit.annotation.ExcludeAuditField;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -13,6 +14,9 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+
+    @ExcludeAuditField
     private String department;
+
     private Double salary;
 }

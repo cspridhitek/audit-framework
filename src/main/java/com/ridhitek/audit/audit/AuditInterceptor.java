@@ -2,6 +2,7 @@ package com.ridhitek.audit.audit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ridhitek.audit.annotation.ExcludeAuditField;
 import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.repository.AuditLogRepository;
 import com.ridhitek.audit.util.DigitalSignatureUtil;
@@ -14,6 +15,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,20 +63,28 @@ public class AuditInterceptor extends EmptyInterceptor {
         if (entity instanceof AuditLog) { // ✅ Avoid recursive logging
             return;
         }
+        boolean hasRelevantChanges = false;
 
         Map<String, Object> oldValues = new HashMap<>();
         Map<String, Object> newValues = new HashMap<>();
 
         for (int i = 0; i < propertyNames.length; i++) {
+
+            if (isFieldExcluded(entity, propertyNames[i])) {
+                continue;
+            }
             Object oldValue = (oldState != null) ? oldState[i] : null;
             Object newValue = (newState != null) ? newState[i] : null;
 
             if (!Objects.equals(oldValue, newValue)) {
+                hasRelevantChanges = true;
                 oldValues.put(propertyNames[i], oldValue);
                 newValues.put(propertyNames[i], newValue);
             }
         }
-
+        if(!hasRelevantChanges){
+            return;
+        }
         String oldJson = convertToJson(oldValues);
         String newJson = convertToJson(newValues);
         LocalDateTime timestamp = LocalDateTime.now();
@@ -115,5 +125,14 @@ public class AuditInterceptor extends EmptyInterceptor {
             return request.getRemoteAddr(); // ✅ Get client IP address
         }
         return "UNKNOWN";
+    }
+
+    private boolean isFieldExcluded(Object entity, String fieldName) {
+        try {
+            Field field = entity.getClass().getDeclaredField(fieldName);
+            return field.isAnnotationPresent(ExcludeAuditField.class);
+        } catch (NoSuchFieldException e) {
+            return false;
+        }
     }
 }
