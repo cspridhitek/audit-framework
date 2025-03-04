@@ -1,16 +1,10 @@
 package com.ridhitek.audit.entity;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.PrePersist;
-
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.persistence.Column;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
@@ -18,7 +12,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class AuditLogEntity implements Serializable {
+@Table(name = "audit_log")
+public class AuditLog implements Serializable {
 
     private static final long serialVersionUID = 1L;  // Ensure versioning
 
@@ -29,9 +24,10 @@ public class AuditLogEntity implements Serializable {
     @Column(nullable = false)
     private String action; // Action Taken
 
+    @Column(columnDefinition = "TEXT")
     private String oldValue;
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String newValue;
 
     @Column(nullable = false)
@@ -40,7 +36,7 @@ public class AuditLogEntity implements Serializable {
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String signature;
 
     @Column(nullable = false)

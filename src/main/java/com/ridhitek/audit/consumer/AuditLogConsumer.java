@@ -1,7 +1,7 @@
 package com.ridhitek.audit.consumer;
 
 
-import com.ridhitek.audit.entity.AuditLogEntity;
+import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.repository.AuditLogRepository;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
@@ -14,7 +14,6 @@ import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 @EnableRetry
 @Component
@@ -22,12 +21,6 @@ public class AuditLogConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditLogConsumer.class);
 
-
-//    @Value("${spring.kafka.topic}")
-//    private String auditTopic;
-//
-//    @Value("${spring.kafka.consumer.group-id}")
-//    private String auditGroupId;
 
     @Value("${retry.maxAttempts}")
     private int retryMaxAttempts;
@@ -45,14 +38,13 @@ public class AuditLogConsumer {
     }
 
 
-
-    @KafkaListener( topics = "${spring.kafka.topic}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${spring.kafka.topic}", groupId = "${spring.kafka.consumer.group-id}")
     @Retryable(
-            value = { RuntimeException.class },
+            value = {RuntimeException.class},
             maxAttempts = 3,
             backoff = @Backoff(delay = 2000)
     )
-    public void consume(AuditLogEntity auditLogEntity) {
+    public void consume(AuditLog auditLogEntity) {
         logger.info("Storing record in DB...");
         auditLogRepository.save(auditLogEntity);
     }

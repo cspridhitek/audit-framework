@@ -1,6 +1,6 @@
 package com.ridhitek.audit.service;
 
-import com.ridhitek.audit.entity.AuditLogEntity;
+import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.repository.AuditLogRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,15 +15,15 @@ public class AuditService {
         this.auditLogRepository = auditLogRepository;
     }
 
-    public AuditLogEntity saveAuditLog(AuditLogEntity auditLog) {
+    public AuditLog saveAuditLog(AuditLog auditLog) {
         return auditLogRepository.save(auditLog);
     }
 
-    public List<AuditLogEntity> getAllAuditLogs() {
+    public List<AuditLog> getAllAuditLogs() {
         return auditLogRepository.findAll();
     }
 
-    public AuditLogEntity getAuditLogById(Long id) {
+    public AuditLog getAuditLogById(Long id) {
         return auditLogRepository.findById(id).orElse(null);
     }
 

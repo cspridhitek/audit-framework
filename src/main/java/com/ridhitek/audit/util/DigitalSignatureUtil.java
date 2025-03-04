@@ -7,9 +7,8 @@ import java.util.Base64;
 public class DigitalSignatureUtil {
     private static final String SECRET_KEY = "MySecretKeyForAuditLogs";
 
-    public static String signLog(String action, String username, String timestamp) {
+    public static String signLog(String data) {
         try {
-            String data = action + username + timestamp;
             Mac hmacSHA256 = Mac.getInstance("HmacSHA256");
             SecretKeySpec secretKeySpec = new SecretKeySpec(SECRET_KEY.getBytes(), "HmacSHA256");
             hmacSHA256.init(secretKeySpec);

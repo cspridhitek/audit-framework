@@ -1,6 +1,6 @@
 package com.ridhitek.audit.config;
 
-import com.ridhitek.audit.entity.AuditLogEntity;
+import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.service.AuditService;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ public class DatabaseAppender {
     }
 
     public void logToDatabase(String actor, String action, String details) {
-        AuditLogEntity auditLog = new AuditLogEntity();
+        AuditLog auditLog = new AuditLog();
         auditLog.setAction(action);
         auditLog.setUserName(actor);
 

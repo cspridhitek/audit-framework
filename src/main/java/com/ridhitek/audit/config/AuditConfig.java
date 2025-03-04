@@ -18,8 +18,8 @@ public class AuditConfig {
     @Autowired
     private AuditService auditService;
 
-    @Autowired
-    private KafkaTemplate<String, String> kafkaTemplate;
+//    @Autowired
+//    private KafkaTemplate<String, String> kafkaTemplate;
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
@@ -32,7 +32,10 @@ public class AuditConfig {
         if ("database".equals(handlerType)) {
             return new DatabaseAppender(auditService);
         } else if ("kafka".equals(handlerType)) {
-            return new KafkaAppender(kafkaTemplate, auditService, failedAuditLogRepository);
+            //TODO
+            System.out.println("kafka is disabled");
+            return new Object();
+//            return new KafkaAppender(kafkaTemplate, auditService, failedAuditLogRepository);
         } else {
             throw new IllegalArgumentException("Unsupported handler type: " + handlerType);
         }

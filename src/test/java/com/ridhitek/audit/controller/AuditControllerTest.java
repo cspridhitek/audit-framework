@@ -1,7 +1,7 @@
 package com.ridhitek.audit.controller;
 
 import com.ridhitek.audit.dto.AuditLogDTO;
-import com.ridhitek.audit.entity.AuditLogEntity;
+import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.service.AuditService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -29,9 +29,9 @@ public class AuditControllerTest {
 
     @Test
     public void testGetAllAuditLogs() {
-        AuditLogEntity log1 = new AuditLogEntity();
-        AuditLogEntity log2 = new AuditLogEntity();
-        List<AuditLogEntity> logs = Arrays.asList(log1, log2);
+        AuditLog log1 = new AuditLog();
+        AuditLog log2 = new AuditLog();
+        List<AuditLog> logs = Arrays.asList(log1, log2);
 
         when(auditService.getAllAuditLogs()).thenReturn(logs);
 
@@ -43,20 +43,20 @@ public class AuditControllerTest {
     @Test
     public void testGetAuditLogById() {
         
-        AuditLogEntity log = new AuditLogEntity();
+        AuditLog log = new AuditLog();
         when(auditService.getAuditLogById(1L)).thenReturn(log);
 
-        ResponseEntity<AuditLogEntity> response = auditController.getAuditLogById(1L);
+        ResponseEntity<AuditLog> response = auditController.getAuditLogById(1L);
         assertEquals(200, response.getStatusCodeValue());
         assertEquals(log, response.getBody());
     }
 
     @Test
     public void testCreateAuditLog() {
-        AuditLogEntity log = new AuditLogEntity();
+        AuditLog log = new AuditLog();
         when(auditService.saveAuditLog(log)).thenReturn(log);
 
-        ResponseEntity<AuditLogEntity> response = auditController.createAuditLog(log);
+        ResponseEntity<AuditLog> response = auditController.createAuditLog(log);
         assertEquals(201, response.getStatusCodeValue());
         assertEquals(log, response.getBody());
     }
