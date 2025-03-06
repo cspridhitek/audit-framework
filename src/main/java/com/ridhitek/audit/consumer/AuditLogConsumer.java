@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.retry.annotation.Recover;
@@ -22,7 +23,7 @@ public class AuditLogConsumer {
     private static final Logger logger = LoggerFactory.getLogger(AuditLogConsumer.class);
 
 
-    @Value("${retry.maxAttempts}")
+    @Value("${retry.maxAttempts:3}")
     private int retryMaxAttempts;
 
     @Value("${retry.backoff.delay}")
@@ -40,28 +41,36 @@ public class AuditLogConsumer {
 
     @KafkaListener(topics = "${spring.kafka.topic}", groupId = "${spring.kafka.consumer.group-id}")
     @Retryable(
-            value = {RuntimeException.class},
+            retryFor = {RuntimeException.class},
             maxAttempts = 3,
-            backoff = @Backoff(delay = 2000)
+            backoff = @Backoff(delay = 3000)
     )
-    public void consume(AuditLog auditLogEntity) {
-        logger.info("Storing record in DB...");
-        auditLogRepository.save(auditLogEntity);
+    public void consume(AuditLog auditLog) {
+        try {
+            logger.info("Storing record in DB...");
+            auditLogRepository.save(auditLog);
+        } catch (Exception e) {
+            saveFailedAuditLog(auditLog, e.getMessage());
+        }
     }
 
-    @Recover
-    public void recover(Exception e, String message) {
-        System.out.println("Failed after retries, applying fallback: " + message);
-        saveFailedAuditLog(message, e.getMessage());
+    public void saveFailedAuditLog(AuditLog auditLog, String message) {
+        try {
+            FailedAuditLog failedAuditLog = new FailedAuditLog();
+            failedAuditLog.setAction(auditLog.getAction());
+            failedAuditLog.setUserName(auditLog.getUserName());
+            failedAuditLog.setSignature(auditLog.getSignature());
+            failedAuditLog.setTimestamp(auditLog.getTimestamp());
+            failedAuditLog.setDeviceDetails(auditLog.getDeviceDetails());
+            failedAuditLog.setNewValue(auditLog.getNewValue());
+            failedAuditLog.setOldValue(auditLog.getOldValue());
+            failedAuditLog.setFailureReason(message);
+            failedAuditLogRepository.save(failedAuditLog);
+        } catch (Exception e) {
+            // Log the error if saving the failed audit log also fails
+            logger.error("Failed to save failed audit log: {}", e.getMessage(), e);
+        }
     }
 
-    private void saveFailedAuditLog(String message, String error) {
-        System.out.println("Saving to fallback storage: " + message + " | Error: " + error);
-        // Store failed logs in DB or send to a Dead Letter Queue
-        FailedAuditLog log = new FailedAuditLog();
-//        log.setMessage(message);
-        log.setErrorMessage(error);
-        failedAuditLogRepository.save(log);
-    }
 }
 

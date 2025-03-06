@@ -1,34 +1,44 @@
 package com.ridhitek.audit.entity;
 
-
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Data
 @Entity
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "failed_audit_log")
 public class FailedAuditLog {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String actor;
-    private String action;
-    private String details;
-    private String errorMessage;
-    private LocalDateTime actualTime;
 
-    // Constructors, getters, and setters
-    public FailedAuditLog() {}
+    @Column(nullable = false)
+    private String action; // Action Taken
 
-    public FailedAuditLog(String actor, String action, String details, String errorMessage, LocalDateTime actualTime) {
-        this.actor = actor;
-        this.action = action;
-        this.details = details;
-        this.errorMessage = errorMessage;
-        this.actualTime = actualTime;
-    }
+    @Column(columnDefinition = "TEXT")
+    private String oldValue;
 
+    @Column(columnDefinition = "TEXT")
+    private String newValue;
+
+    @Column(nullable = false)
+    private String userName;
+
+    @Column(nullable = false)
+    private LocalDateTime timestamp;
+
+    @Column(columnDefinition = "TEXT")
+    private String signature;
+
+    @Column(nullable = false)
+    private String deviceDetails;
+
+    @Column(columnDefinition = "TEXT")
+    private String failureReason; // Stores error message from Kafka failure
 }

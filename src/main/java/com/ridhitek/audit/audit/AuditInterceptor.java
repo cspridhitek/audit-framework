@@ -3,7 +3,10 @@ package com.ridhitek.audit.audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ridhitek.audit.annotation.ExcludeAuditField;
+import com.ridhitek.audit.config.AuditProperties;
 import com.ridhitek.audit.entity.AuditLog;
+import com.ridhitek.audit.entity.FailedAuditLog;
+import com.ridhitek.audit.producer.AuditLogProducer;
 import com.ridhitek.audit.repository.AuditLogRepository;
 import com.ridhitek.audit.util.DigitalSignatureUtil;
 import jakarta.transaction.Transactional;
@@ -36,6 +39,12 @@ public class AuditInterceptor extends EmptyInterceptor {
     private AuditLogRepository getAuditLogRepository() {
         return context.getBean(AuditLogRepository.class); // Lazily fetch repository
     }
+    private AuditLogProducer getAuditLogProducer(){
+        return context.getBean(AuditLogProducer.class);
+    }
+    private AuditProperties getAuditProperties(){
+        return context.getBean(AuditProperties.class);
+    }
 
     @Override
     public boolean onFlushDirty(Object entity, Serializable id, Object[] currentState, Object[] previousState,
@@ -61,6 +70,9 @@ public class AuditInterceptor extends EmptyInterceptor {
     private void logAudit(Object entity, Serializable id, Object[] newState, Object[] oldState, String[] propertyNames, String action) {
 
         if (entity instanceof AuditLog) { // ✅ Avoid recursive logging
+            return;
+        }
+        if(entity instanceof FailedAuditLog){
             return;
         }
         boolean hasRelevantChanges = false;
@@ -105,6 +117,13 @@ public class AuditInterceptor extends EmptyInterceptor {
 
     @Transactional
     public void saveAuditLog(AuditLog auditLog) {
+        AuditProperties auditProperties = getAuditProperties();
+        String handlerType = auditProperties.getHandlerType();
+        if(Objects.equals(handlerType, "kafka_database")){
+            AuditLogProducer auditLogProducer = getAuditLogProducer();
+            auditLogProducer.logToKafka(auditLog);
+            return;
+        }
         AuditLogRepository auditLogRepository = getAuditLogRepository();
         auditLogRepository.save(auditLog);
     }
