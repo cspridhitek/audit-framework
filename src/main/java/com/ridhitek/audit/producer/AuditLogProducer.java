@@ -20,7 +20,7 @@ import org.springframework.util.ObjectUtils;
 import java.util.concurrent.CompletableFuture;
 
 @EnableRetry
-@ConditionalOnProperty(name = "audit.handler-type", havingValue = "kafka_database")
+//@ConditionalOnProperty(name = "audit.handler-type", havingValue = "kafka_database")
 @Service
 public class AuditLogProducer {
 

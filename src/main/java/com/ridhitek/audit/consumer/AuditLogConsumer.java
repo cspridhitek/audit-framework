@@ -23,11 +23,11 @@ public class AuditLogConsumer {
     private static final Logger logger = LoggerFactory.getLogger(AuditLogConsumer.class);
 
 
-    @Value("${retry.maxAttempts:3}")
-    private int retryMaxAttempts;
-
-    @Value("${retry.backoff.delay}")
-    private long retryBackoffDelay;
+//    @Value("${retry.maxAttempts:3}")
+//    private int retryMaxAttempts;
+//
+//    @Value("${retry.backoff.delay}")
+//    private long retryBackoffDelay;
 
     private final FailedAuditLogRepository failedAuditLogRepository;
 

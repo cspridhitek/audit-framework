@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "audit_log")
+@Table(name = "audit_log", schema = "audit_logs")
 public class AuditLog implements Serializable {
 
     private static final long serialVersionUID = 1L;  // Ensure versioning
