@@ -50,8 +50,8 @@ public class AuditLogProducer {
      */
     @Retryable(
             retryFor = {Exception.class},
-            maxAttemptsExpression = "#{@retryMaxAttempts}",
-            backoff = @Backoff(delayExpression = "#{@retryBackoffDelay}")
+            maxAttemptsExpression = "3",
+            backoff = @Backoff(delayExpression = "2000")
     )
     public void logToKafka(AuditLog auditLog) {
         try {

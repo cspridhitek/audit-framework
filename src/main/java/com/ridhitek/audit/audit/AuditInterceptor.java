@@ -26,7 +26,6 @@ import java.util.Objects;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-@Component
 public class AuditInterceptor extends EmptyInterceptor {
 
     private final ApplicationContext context;
@@ -100,7 +99,7 @@ public class AuditInterceptor extends EmptyInterceptor {
         String oldJson = convertToJson(oldValues);
         String newJson = convertToJson(newValues);
         LocalDateTime timestamp = LocalDateTime.now();
-        String ipAddress = getClientIpAddress(); // ✅ Fetch correct IP
+//        String ipAddress = getClientIpAddress(); // ✅ Fetch correct IP
 
         AuditLog auditLog = new AuditLog();
         String changedBy = "SYSTEM"; // Default Name
@@ -110,7 +109,7 @@ public class AuditInterceptor extends EmptyInterceptor {
         auditLog.setAction(action);
         auditLog.setTimestamp(timestamp);
         auditLog.setSignature(DigitalSignatureUtil.signLog(action + changedBy + timestamp));
-        auditLog.setDeviceDetails(ipAddress); // ✅ Store real IP
+        auditLog.setDeviceDetails("ipAddress"); // ✅ Store real IP
 
         saveAuditLog(auditLog); // ✅ Use separate transaction to avoid conflicts
     }
@@ -125,6 +124,7 @@ public class AuditInterceptor extends EmptyInterceptor {
             return;
         }
         AuditLogRepository auditLogRepository = getAuditLogRepository();
+        System.out.println("Saving to Database   " +auditLog);
         auditLogRepository.save(auditLog);
     }
 
@@ -141,10 +141,11 @@ public class AuditInterceptor extends EmptyInterceptor {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
-            return request.getRemoteAddr(); // ✅ Get client IP address
+            return request.getRemoteAddr() != null ? request.getRemoteAddr() : "UNKNOWN";
         }
         return "UNKNOWN";
     }
+
 
     private boolean isFieldExcluded(Object entity, String fieldName) {
         try {

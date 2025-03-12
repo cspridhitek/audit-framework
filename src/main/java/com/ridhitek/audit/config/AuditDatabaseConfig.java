@@ -1,9 +1,11 @@
 package com.ridhitek.audit.config;
 
+import com.ridhitek.audit.audit.AuditInterceptor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -37,7 +39,8 @@ public class AuditDatabaseConfig {
 
     @Bean(name = "auditEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean auditEntityManagerFactory(
-            @Qualifier("auditDataSource") DataSource dataSource) {
+            @Qualifier("auditDataSource") DataSource dataSource,
+            ApplicationContext context) { // Inject ApplicationContext to get beans dynamically
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
         em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
@@ -46,11 +49,16 @@ public class AuditDatabaseConfig {
         // Hibernate properties
         Properties properties = new Properties();
         properties.put("hibernate.hbm2ddl.auto", "update"); // Update schema automatically
-        properties.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+
+        // ✅ Dynamically fetch and attach AuditInterceptor
+        AuditInterceptor auditInterceptor = context.getBean(AuditInterceptor.class);
+        properties.put("hibernate.session_factory.interceptor", auditInterceptor);
+
         em.setJpaProperties(properties);
 
         return em;
     }
+
 
     @Bean(name = "auditTransactionManager")
     public JpaTransactionManager auditTransactionManager(

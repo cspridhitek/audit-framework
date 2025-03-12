@@ -5,6 +5,7 @@ import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.repository.AuditLogRepository;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +55,7 @@ public class AuditLogConsumer {
         }
     }
 
+    @Transactional
     public void saveFailedAuditLog(AuditLog auditLog, String message) {
         try {
             FailedAuditLog failedAuditLog = new FailedAuditLog();
