@@ -118,6 +118,7 @@ public class AuditInterceptor extends EmptyInterceptor {
     public void saveAuditLog(AuditLog auditLog) {
         AuditProperties auditProperties = getAuditProperties();
         String handlerType = auditProperties.getHandlerType();
+        System.out.println("Save Audit log"+ handlerType);
         if(Objects.equals(handlerType, "kafka_database")){
             AuditLogProducer auditLogProducer = getAuditLogProducer();
             auditLogProducer.logToKafka(auditLog);
