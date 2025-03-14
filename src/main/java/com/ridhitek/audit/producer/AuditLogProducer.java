@@ -59,16 +59,16 @@ public class AuditLogProducer {
 
             future.handle((result, ex) -> {
                 if (ex != null) {
-                    System.err.println("Message sending failed: " + auditLog + ", Error: " + ex.getMessage());
+                    logger.error("Message sending failed: " + auditLog + ", Error: " + ex.getMessage());
                     saveFailedAuditLog(auditLog, ex.getMessage());
                 } else {
-                    System.out.println("Message sent successfully to partition: " + result.getRecordMetadata().partition());
+                   logger.error("Message sent successfully to partition: " + result.getRecordMetadata().partition());
                 }
                 return null;
             });
 
         } catch (Exception e) {
-            System.err.println("Exception while sending Kafka message: " + e.getCause());
+            logger.error("Exception while sending Kafka message: " + e.getCause());
             saveFailedAuditLog(auditLog, e.getCause().getMessage());
         }
 
@@ -89,6 +89,7 @@ public class AuditLogProducer {
             failedAuditLog.setOldValue(auditLog.getOldValue());
             failedAuditLog.setFailureReason(message);
             failedAuditLogRepository.save(failedAuditLog);
+            logger.info("Failed audit log saved successfully.");
         } catch (Exception e) {
             // Log the error if saving the failed audit log also fails
             logger.error("Failed to save failed audit log: {}", e.getMessage(), e);

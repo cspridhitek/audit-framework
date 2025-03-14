@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ridhitek.audit.annotation.ExcludeAuditField;
 import com.ridhitek.audit.config.AuditProperties;
+import com.ridhitek.audit.consumer.AuditLogConsumer;
 import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.producer.AuditLogProducer;
@@ -12,6 +13,8 @@ import com.ridhitek.audit.util.DigitalSignatureUtil;
 import jakarta.transaction.Transactional;
 import org.hibernate.EmptyInterceptor;
 import org.hibernate.type.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -28,6 +31,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 public class AuditInterceptor extends EmptyInterceptor {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuditInterceptor.class);
     private final ApplicationContext context;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -38,10 +42,12 @@ public class AuditInterceptor extends EmptyInterceptor {
     private AuditLogRepository getAuditLogRepository() {
         return context.getBean(AuditLogRepository.class); // Lazily fetch repository
     }
-    private AuditLogProducer getAuditLogProducer(){
+
+    private AuditLogProducer getAuditLogProducer() {
         return context.getBean(AuditLogProducer.class);
     }
-    private AuditProperties getAuditProperties(){
+
+    private AuditProperties getAuditProperties() {
         return context.getBean(AuditProperties.class);
     }
 
@@ -67,66 +73,103 @@ public class AuditInterceptor extends EmptyInterceptor {
     }
 
     private void logAudit(Object entity, Serializable id, Object[] newState, Object[] oldState, String[] propertyNames, String action) {
+        try {
+            if (shouldSkipAudit(entity)) {
+                return;
+            }
 
-        if (entity instanceof AuditLog) { // ✅ Avoid recursive logging
-            return;
+            Map<String, Object> oldValues = new HashMap<>();
+            Map<String, Object> newValues = new HashMap<>();
+
+            if (!extractChangedFields(entity, oldState, newState, propertyNames, oldValues, newValues)) {
+                return; // No relevant changes, skip logging
+            }
+
+            AuditLog auditLog = buildAuditLog(action, oldValues, newValues);
+            saveAuditLog(auditLog);
+        } catch (Exception e) {
+            logger.error("Failed to log audit for action: " + action, e);
         }
-        if(entity instanceof FailedAuditLog){
-            return;
-        }
-        boolean hasRelevantChanges = false;
+    }
 
-        Map<String, Object> oldValues = new HashMap<>();
-        Map<String, Object> newValues = new HashMap<>();
+    private boolean shouldSkipAudit(Object entity) {
+        return entity instanceof AuditLog || entity instanceof FailedAuditLog;
+    }
 
+    private boolean extractChangedFields(Object entity, Object[] oldState, Object[] newState,
+                                         String[] propertyNames, Map<String, Object> oldValues,
+                                         Map<String, Object> newValues) {
+        boolean hasChanges = false;
         for (int i = 0; i < propertyNames.length; i++) {
-
             if (isFieldExcluded(entity, propertyNames[i])) {
                 continue;
             }
+
             Object oldValue = (oldState != null) ? oldState[i] : null;
             Object newValue = (newState != null) ? newState[i] : null;
 
             if (!Objects.equals(oldValue, newValue)) {
-                hasRelevantChanges = true;
+                hasChanges = true;
                 oldValues.put(propertyNames[i], oldValue);
                 newValues.put(propertyNames[i], newValue);
             }
         }
-        if(!hasRelevantChanges){
-            return;
-        }
-        String oldJson = convertToJson(oldValues);
-        String newJson = convertToJson(newValues);
-        LocalDateTime timestamp = LocalDateTime.now();
-//        String ipAddress = getClientIpAddress(); // ✅ Fetch correct IP
+        return hasChanges;
+    }
 
+    private AuditLog buildAuditLog(String action, Map<String, Object> oldValues, Map<String, Object> newValues) {
         AuditLog auditLog = new AuditLog();
-        String changedBy = "SYSTEM"; // Default Name
+        String changedBy = "SYSTEM";
         auditLog.setUserName(changedBy);
-        auditLog.setOldValue(oldJson);
-        auditLog.setNewValue(newJson);
+        auditLog.setOldValue(convertToJson(oldValues));
+        auditLog.setNewValue(convertToJson(newValues));
         auditLog.setAction(action);
+        LocalDateTime timestamp = LocalDateTime.now();
         auditLog.setTimestamp(timestamp);
         auditLog.setSignature(DigitalSignatureUtil.signLog(action + changedBy + timestamp));
-        auditLog.setDeviceDetails("ipAddress"); // ✅ Store real IP
+        auditLog.setDeviceDetails(getClientIpAddress());
 
-        saveAuditLog(auditLog); // ✅ Use separate transaction to avoid conflicts
+        return auditLog;
     }
+
 
     @Transactional
     public void saveAuditLog(AuditLog auditLog) {
-        AuditProperties auditProperties = getAuditProperties();
-        String handlerType = auditProperties.getHandlerType();
-        System.out.println("Save Audit log"+ handlerType);
-        if(Objects.equals(handlerType, "kafka_database")){
-            AuditLogProducer auditLogProducer = getAuditLogProducer();
-            auditLogProducer.logToKafka(auditLog);
-            return;
+        String handlerType = getAuditHandlerType();
+        System.out.println("Save Audit log" + handlerType);
+        try {
+            if(isKafkaEnabled(handlerType)){
+                sendToKafka(auditLog);
+            }else{
+                saveToDatabase(auditLog);
+            }
+        }catch (Exception e){
+            logger.error("Failed to save audit log", e);
         }
-        AuditLogRepository auditLogRepository = getAuditLogRepository();
-        System.out.println("Saving to Database   " +auditLog);
-        auditLogRepository.save(auditLog);
+    }
+
+    private boolean isKafkaEnabled(String handlerType) {
+        return Objects.equals(handlerType, "kafka_database");
+    }
+    private void sendToKafka(AuditLog auditLog) {
+        try {
+            getAuditLogProducer().logToKafka(auditLog);
+        } catch (Exception e) {
+            logger.error("Failed to send audit log to Kafka", e);
+        }
+    }
+
+    private void saveToDatabase(AuditLog auditLog) {
+        try {
+           logger.info("Saving to Database: " + auditLog);
+            getAuditLogRepository().save(auditLog);
+        } catch (Exception e) {
+            logger.error("Failed to save audit log to database", e);
+        }
+    }
+
+    private String getAuditHandlerType() {
+        return getAuditProperties().getHandlerType();
     }
 
     private String convertToJson(Map<String, Object> map) {

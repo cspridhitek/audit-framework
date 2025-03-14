@@ -23,12 +23,7 @@ public class AuditLogConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditLogConsumer.class);
 
-
-//    @Value("${retry.maxAttempts:3}")
-//    private int retryMaxAttempts;
-//
-//    @Value("${retry.backoff.delay}")
-//    private long retryBackoffDelay;
+    //TODO READ THE PROPERTY FROM APPLICATION.PROPERTIES FILE
 
     private final FailedAuditLogRepository failedAuditLogRepository;
 
@@ -50,7 +45,9 @@ public class AuditLogConsumer {
         try {
             logger.info("Storing record in DB...");
             auditLogRepository.save(auditLog);
+            logger.info("Record stored successfully.");
         } catch (Exception e) {
+            logger.error("Failed to store audit log: {}", e.getMessage(), e);
             saveFailedAuditLog(auditLog, e.getMessage());
         }
     }
@@ -68,6 +65,7 @@ public class AuditLogConsumer {
             failedAuditLog.setOldValue(auditLog.getOldValue());
             failedAuditLog.setFailureReason(message);
             failedAuditLogRepository.save(failedAuditLog);
+            logger.info("Failed audit log saved successfully.");
         } catch (Exception e) {
             // Log the error if saving the failed audit log also fails
             logger.error("Failed to save failed audit log: {}", e.getMessage(), e);

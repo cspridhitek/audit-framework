@@ -1,6 +1,7 @@
 package com.ridhitek.audit.controller;
 
 import com.ridhitek.audit.dto.AuditLogDTO;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,12 +23,25 @@ public class AuditController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AuditLogDTO>> getAllAuditLogs() {
-        List<AuditLog> auditLogs = auditService.getAllAuditLogs();
-        List<AuditLogDTO> auditLogDTOS = auditLogs.stream().map(emp ->
-                new AuditLogDTO(emp.getUserName(), emp.getAction(), emp.getOldValue(),
-                        emp.getDeviceDetails(), emp.getTimestamp(), emp.getNewValue())).collect(Collectors.toList());
-        return ResponseEntity.ok(auditLogDTOS);
+    public ResponseEntity<Page<AuditLogDTO>> getAllAuditLogs(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sortBy", defaultValue = "timestamp") String sortBy,
+            @RequestParam(name = "sortDirection", defaultValue = "desc") String sortDirection) {
+
+        Page<AuditLog> auditLogs = auditService.getAllAuditLogs(page, size, sortBy, sortDirection);
+
+        Page<AuditLogDTO> auditLogDTOPage = auditLogs.map(auditLog ->
+                new AuditLogDTO(
+                        auditLog.getUserName(),
+                        auditLog.getAction(),
+                        auditLog.getOldValue(),
+                        auditLog.getDeviceDetails(),
+                        auditLog.getTimestamp(),
+                        auditLog.getNewValue()
+                ));
+        return ResponseEntity.ok(auditLogDTOPage);
     }
+
 
 }
