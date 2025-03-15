@@ -1,6 +1,6 @@
 # Audit Framework
 
-This project is an audit logging framework built with Spring Boot and Maven. It utilizes the `audit4j-core` library for handling audit logs and provides various appenders for different logging mechanisms, including database, file, and Kafka.
+This project is an audit logging framework built with Spring Boot and Maven. It provides various appenders for different logging mechanisms, including database and Kafka.
 
 ## Project Structure
 
@@ -47,7 +47,7 @@ The project follows a standard Maven structure and includes the following key co
 ## Usage
 
 - Use the `AuditController` to interact with the audit logs via REST endpoints.
-- The audit logs will be stored according to the configured appenders (database, file, or Kafka).
+- The audit logs will be stored according to the configured appenders (database or Kafka).
 
 ## Fetch Audit Logs (Paginated)
 
@@ -63,7 +63,7 @@ This project includes the following key dependencies:
 
 ## Customization
 
--Change AuditLog entity structure based on requirements.
+- Change AuditLog entity structure based on requirements.
 
 ## License
 
