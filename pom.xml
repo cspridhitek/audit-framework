@@ -119,6 +119,7 @@
             <version>4.0.0</version>
             <scope>test</scope>
         </dependency>
+        
     </dependencies>
 
     <build>
@@ -151,7 +152,18 @@
                     </excludes>
                 </configuration>
             </plugin>
-
+       <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>analyze</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
