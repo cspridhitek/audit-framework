@@ -9,11 +9,12 @@ import org.springframework.web.bind.annotation.*;
 import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.service.AuditService;
 
-import javax.validation.constraints.Min;
-import javax.validation.constraints.Pattern;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 
 @RestController
 @CrossOrigin(origins = "*")
+
 @RequestMapping("/api/audit")
 @Validated
 public class AuditController {
