@@ -18,12 +18,6 @@ import java.util.Objects;
 import java.util.Properties;
 
 @Configuration
-@EntityScan(basePackages = "com.ridhitek.audit.entity") // Scan only Audit entities
-@EnableJpaRepositories(
-        basePackages = "com.ridhitek.audit.repository",
-        entityManagerFactoryRef = "auditEntityManagerFactory",
-        transactionManagerRef = "auditTransactionManager"
-)
 public class AuditDatabaseConfig {
 
     @Bean
@@ -49,6 +43,8 @@ public class AuditDatabaseConfig {
         // Hibernate properties
         Properties properties = new Properties();
         properties.put("hibernate.hbm2ddl.auto", "update"); // Update schema automatically
+        properties.put("hibernate.cache.use_second_level_cache", "true"); // Enable second-level cache
+        properties.put("hibernate.cache.region.factory_class", "org.hibernate.cache.jcache.JCacheRegionFactory"); // Cache provider
 
         // ✅ Dynamically fetch and attach AuditInterceptor
         AuditInterceptor auditInterceptor = context.getBean(AuditInterceptor.class);
@@ -59,7 +55,6 @@ public class AuditDatabaseConfig {
         return em;
     }
 
-
     @Bean(name = "auditTransactionManager")
     public JpaTransactionManager auditTransactionManager(
             @Qualifier("auditEntityManagerFactory") LocalContainerEntityManagerFactoryBean auditEntityManagerFactory) {
@@ -68,4 +63,3 @@ public class AuditDatabaseConfig {
         return transactionManager;
     }
 }
-

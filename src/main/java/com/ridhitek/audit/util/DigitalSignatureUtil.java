@@ -18,7 +18,7 @@ public class DigitalSignatureUtil {
         }
     }
 
-    private static final ThreadLocal<Mac> threadLocalMac = ThreadLocal.withInitial(DigitalSignatureUtil::createMacInstance);
+    private static final ThreadLocal<Mac> threadLocalMac = ThreadLocal.withInitial(() -> createMacInstance());
 
     private static Mac createMacInstance() {
         try {

@@ -52,7 +52,7 @@ public class AuditServiceTest {
         AuditLog log = new AuditLog();
         when(auditLogRepository.findById(1L)).thenReturn(Optional.of(log));
 
-        AuditLog retrievedLog = auditService.getAuditLogById(1L);
+        Optional<AuditLog> retrievedLog = auditService.getAuditLogById(1L);
         assertEquals(log, retrievedLog);
     }
 

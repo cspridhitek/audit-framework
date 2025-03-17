@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ridhitek.audit.annotation.ExcludeAuditField;
 import com.ridhitek.audit.config.AuditProperties;
-import com.ridhitek.audit.consumer.AuditLogConsumer;
 import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.producer.AuditLogProducer;
@@ -26,29 +25,26 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+@Component
 public class AuditInterceptor extends EmptyInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditInterceptor.class);
-    private final ApplicationContext context;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    private final AuditLogRepository auditLogRepository;
+    private final AuditLogProducer auditLogProducer;
+    private final AuditProperties auditProperties;
 
     public AuditInterceptor(ApplicationContext context) {
-        this.context = context;
-    }
-
-    private AuditLogRepository getAuditLogRepository() {
-        return context.getBean(AuditLogRepository.class); // Lazily fetch repository
-    }
-
-    private AuditLogProducer getAuditLogProducer() {
-        return context.getBean(AuditLogProducer.class);
-    }
-
-    private AuditProperties getAuditProperties() {
-        return context.getBean(AuditProperties.class);
+        this.auditLogRepository = context.getBean(AuditLogRepository.class);
+        this.auditLogProducer = context.getBean(AuditLogProducer.class);
+        this.auditProperties = context.getBean(AuditProperties.class);
     }
 
     @Override
@@ -86,7 +82,7 @@ public class AuditInterceptor extends EmptyInterceptor {
             }
 
             AuditLog auditLog = buildAuditLog(action, oldValues, newValues);
-            saveAuditLog(auditLog);
+            saveAuditLogAsync(auditLog);
         } catch (Exception e) {
             logger.error("Failed to log audit for action: " + action, e);
         }
@@ -132,44 +128,22 @@ public class AuditInterceptor extends EmptyInterceptor {
         return auditLog;
     }
 
-
     @Transactional
-    public void saveAuditLog(AuditLog auditLog) {
-        String handlerType = getAuditHandlerType();
-        System.out.println("Save Audit log" + handlerType);
+    public void saveAuditLogAsync(AuditLog auditLog) {
+        executorService.submit(() -> saveAuditLog(auditLog));
+    }
+
+    void saveAuditLog(AuditLog auditLog) {
+        String handlerType = auditProperties.getHandlerType();
         try {
-            if(isKafkaEnabled(handlerType)){
-                sendToKafka(auditLog);
-            }else{
-                saveToDatabase(auditLog);
+            if ("kafka_database".equals(handlerType)) {
+                auditLogProducer.logToKafka(auditLog);
+            } else {
+                auditLogRepository.save(auditLog);
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             logger.error("Failed to save audit log", e);
         }
-    }
-
-    private boolean isKafkaEnabled(String handlerType) {
-        return Objects.equals(handlerType, "kafka_database");
-    }
-    private void sendToKafka(AuditLog auditLog) {
-        try {
-            getAuditLogProducer().logToKafka(auditLog);
-        } catch (Exception e) {
-            logger.error("Failed to send audit log to Kafka", e);
-        }
-    }
-
-    private void saveToDatabase(AuditLog auditLog) {
-        try {
-           logger.info("Saving to Database: " + auditLog);
-            getAuditLogRepository().save(auditLog);
-        } catch (Exception e) {
-            logger.error("Failed to save audit log to database", e);
-        }
-    }
-
-    private String getAuditHandlerType() {
-        return getAuditProperties().getHandlerType();
     }
 
     private String convertToJson(Map<String, Object> map) {
@@ -189,7 +163,6 @@ public class AuditInterceptor extends EmptyInterceptor {
         }
         return "UNKNOWN";
     }
-
 
     private boolean isFieldExcluded(Object entity, String fieldName) {
         try {

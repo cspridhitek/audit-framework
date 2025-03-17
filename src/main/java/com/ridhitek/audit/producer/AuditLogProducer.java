@@ -1,14 +1,13 @@
 package com.ridhitek.audit.producer;
 
-
 import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
 import com.ridhitek.audit.service.AuditService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.retry.annotation.Backoff;
@@ -20,7 +19,6 @@ import org.springframework.util.ObjectUtils;
 import java.util.concurrent.CompletableFuture;
 
 @EnableRetry
-//@ConditionalOnProperty(name = "audit.handler-type", havingValue = "kafka_database")
 @Service
 public class AuditLogProducer {
 
@@ -50,10 +48,16 @@ public class AuditLogProducer {
      */
     @Retryable(
             retryFor = {Exception.class},
-            maxAttemptsExpression = "3",
-            backoff = @Backoff(delayExpression = "2000")
+            maxAttemptsExpression = "#{${retry.maxAttempts}}",
+            backoff = @Backoff(delayExpression = "#{${retry.backoff.delay}}")
     )
+    @CircuitBreaker(name = "auditLogProducer", fallbackMethod = "fallbackLogToKafka")
     public void logToKafka(AuditLog auditLog) {
+        if (!validateAuditLog(auditLog)) {
+            logger.error("Invalid audit log: {}", auditLog);
+            return;
+        }
+
         try {
             CompletableFuture<SendResult<String, AuditLog>> future = kafkaTemplate.send(auditTopic, auditLog);
 
@@ -62,7 +66,7 @@ public class AuditLogProducer {
                     logger.error("Message sending failed: " + auditLog + ", Error: " + ex.getMessage());
                     saveFailedAuditLog(auditLog, ex.getMessage());
                 } else {
-                   logger.error("Message sent successfully to partition: " + result.getRecordMetadata().partition());
+                    logger.info("Message sent successfully to partition: " + result.getRecordMetadata().partition());
                 }
                 return null;
             });
@@ -71,7 +75,22 @@ public class AuditLogProducer {
             logger.error("Exception while sending Kafka message: " + e.getCause());
             saveFailedAuditLog(auditLog, e.getCause().getMessage());
         }
+    }
 
+    /**
+     * Fallback method for circuit breaker.
+     */
+    public void fallbackLogToKafka(AuditLog auditLog, Throwable t) {
+        logger.error("Circuit breaker triggered for audit log: {}", auditLog, t);
+        saveFailedAuditLog(auditLog, t.getMessage());
+    }
+
+    /**
+     * Validates the audit log before sending it to Kafka.
+     */
+    private boolean validateAuditLog(AuditLog auditLog) {
+        // Add validation logic here (e.g., check for null values, invalid data, etc.)
+        return auditLog != null && !ObjectUtils.isEmpty(auditLog.getAction()) && !ObjectUtils.isEmpty(auditLog.getUserName());
     }
 
     /**
@@ -95,5 +114,4 @@ public class AuditLogProducer {
             logger.error("Failed to save failed audit log: {}", e.getMessage(), e);
         }
     }
-
 }
