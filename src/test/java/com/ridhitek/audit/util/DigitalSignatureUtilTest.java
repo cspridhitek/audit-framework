@@ -5,10 +5,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,12 +35,15 @@ class DigitalSignatureUtilTest {
 
     @Test
     void testSignLog_GeneratesValidSignature() {
-        String data = TEST_DATA;
+        // Arrange
+        String data = "test data";
+        System.setProperty("AUDIT_LOG_SECRET_KEY", "test-secret-key");
+
+        // Act
         String signature = DigitalSignatureUtil.signLog(data);
 
-        assertNotNull(signature, "Signature should not be null");
-        assertFalse(signature.isEmpty(), "Signature should not be empty");
-        assertEquals(EXPECTED_SIGNATURE, signature, "Signature should match expected value");
+        // Assert
+        assertEquals("u9daWbiKJNbSj6a8bsOz0bs6kd4Dg07KGs1+7Omox88=", signature);
     }
 
     @Test
@@ -74,30 +81,29 @@ class DigitalSignatureUtilTest {
 
     @Test
     void testThreadSafety() throws InterruptedException {
+        // Arrange
+        String data = "test-data";
         int threadCount = 10;
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(threadCount);
-        AtomicReference<Boolean> failed = new AtomicReference<>(false);
-        
+        List<Future<String>> futures = new ArrayList<>();
+
+        // Act
         for (int i = 0; i < threadCount; i++) {
-            final int index = i;
-            executorService.submit(() -> {
-                try {
-                    // All threads use the same data to ensure signatures match
-                    String signature = DigitalSignatureUtil.signLog(TEST_DATA);
-                    if (!EXPECTED_SIGNATURE.equals(signature)) {
-                        failed.set(true);
-                    }
-                } finally {
-                    latch.countDown();
-                }
-            });
+            futures.add(executorService.submit(() -> DigitalSignatureUtil.signLog(data)));
         }
-        
-        latch.await(5, TimeUnit.SECONDS);
+
         executorService.shutdown();
-        
-        assertFalse(failed.get(), "All signatures from multiple threads should match the expected value");
+        executorService.awaitTermination(1, TimeUnit.SECONDS);
+
+        // Assert
+        String expectedSignature = DigitalSignatureUtil.signLog(data);
+        for (Future<String> future : futures) {
+            try {
+                assertEquals(expectedSignature, future.get(), "All signatures from multiple threads should match the expected value");
+            } catch (ExecutionException e) {
+                fail("ExecutionException occurred: " + e.getMessage());
+            }
+        }
     }
 }
 

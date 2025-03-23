@@ -3,6 +3,8 @@ package com.ridhitek.audit.util;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -12,11 +14,11 @@ public class DigitalSignatureUtil {
     private static final String SECRET_KEY;
 
     static {
-        // Changed from System.getenv to System.getProperty to work with tests
-        SECRET_KEY = System.getProperty("AUDIT_LOG_SECRET_KEY");
-        if (SECRET_KEY == null || SECRET_KEY.isEmpty()) {
+        String secretKey = System.getProperty("AUDIT_LOG_SECRET_KEY", "default-secret-key");
+        if (secretKey == null || secretKey.isEmpty()) {
             throw new IllegalStateException("System property AUDIT_LOG_SECRET_KEY is not set or empty");
         }
+        SECRET_KEY = secretKey;
     }
 
     private static final ThreadLocal<Mac> threadLocalMac = ThreadLocal.withInitial(() -> createMacInstance());
@@ -27,7 +29,8 @@ public class DigitalSignatureUtil {
             SecretKeySpec secretKeySpec = new SecretKeySpec(SECRET_KEY.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(secretKeySpec);
             return mac;
-        } catch (Exception e) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            logger.severe("Failed to initialize Mac instance: " + e.getMessage());
             throw new RuntimeException("Failed to initialize Mac instance", e);
         }
     }

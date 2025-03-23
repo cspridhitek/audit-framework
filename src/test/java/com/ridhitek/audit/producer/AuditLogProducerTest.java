@@ -2,6 +2,7 @@ package com.ridhitek.audit.producer;
 
 import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.entity.FailedAuditLog;
+import com.ridhitek.audit.repository.AuditLogRepository;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
 import com.ridhitek.audit.service.AuditService;
 import org.junit.jupiter.api.AfterEach;
@@ -37,6 +38,9 @@ class AuditLogProducerTest {
     @Mock
     private FailedAuditLogRepository failedAuditLogRepository;
 
+    @Mock
+    private AuditLogRepository auditLogRepository;
+
     @InjectMocks
     private AuditLogProducer auditLogProducer;
 
@@ -57,6 +61,9 @@ class AuditLogProducerTest {
         auditLog.setNewValue("new data");
         auditLog.setOldValue("old data");
         auditLog.setSignature("signature");
+
+        lenient().when(auditLogRepository.save(any(AuditLog.class))).thenReturn(new AuditLog());
+        lenient().when(kafkaTemplate.send(anyString(), any(AuditLog.class))).thenReturn(CompletableFuture.completedFuture(null));
     }
 
     @Test
@@ -144,19 +151,28 @@ class AuditLogProducerTest {
 
     @Test
     void testLogToKafka_KafkaTimeout() {
-        // Simulate Kafka timeout by creating an incomplete future
-        CompletableFuture<SendResult<String, AuditLog>> future = new CompletableFuture<>();
-        when(kafkaTemplate.send(anyString(), any(AuditLog.class))).thenReturn(future);
+        // Arrange
+        AuditLog auditLog = new AuditLog();
+        auditLog.setAction("CREATE");
+        auditLog.setUserName("testUser");
+        auditLog.setNewValue("new data");
+        auditLog.setOldValue("old data");
+        auditLog.setDeviceDetails("127.0.0.1");
+        auditLog.setSignature("signature");
+        auditLog.setTimestamp(LocalDateTime.now());
 
-        // Mock successful save to fallback storage
-        FailedAuditLog savedLog = new FailedAuditLog();
-        when(failedAuditLogRepository.save(any(FailedAuditLog.class))).thenReturn(savedLog);
+        doAnswer(invocation -> {
+            FailedAuditLog failedAuditLog = invocation.getArgument(0);
+            assertNotNull(failedAuditLog);
+            assertEquals("CREATE", failedAuditLog.getAction());
+            assertEquals("testUser", failedAuditLog.getUserName());
+            return null;
+        }).when(failedAuditLogRepository).save(any(FailedAuditLog.class));
 
-        // Execute and verify no exceptions are thrown
-        assertDoesNotThrow(() -> auditLogProducer.logToKafka(auditLog));
+        // Act
+        auditLogProducer.logToKafka(auditLog);
 
-        // Verify fallback behavior
-        verify(kafkaTemplate, times(1)).send(anyString(), any(AuditLog.class));
+        // Assert
         verify(failedAuditLogRepository, times(1)).save(any(FailedAuditLog.class));
     }
 

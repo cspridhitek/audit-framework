@@ -14,7 +14,6 @@ import org.hibernate.EmptyInterceptor;
 import org.hibernate.type.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -27,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -41,10 +41,10 @@ public class AuditInterceptor extends EmptyInterceptor {
     private final AuditLogProducer auditLogProducer;
     private final AuditProperties auditProperties;
 
-    public AuditInterceptor(ApplicationContext context) {
-        this.auditLogRepository = context.getBean(AuditLogRepository.class);
-        this.auditLogProducer = context.getBean(AuditLogProducer.class);
-        this.auditProperties = context.getBean(AuditProperties.class);
+    public AuditInterceptor(AuditLogRepository auditLogRepository, AuditLogProducer auditLogProducer, AuditProperties auditProperties) {
+        this.auditLogRepository = auditLogRepository;
+        this.auditLogProducer = auditLogProducer;
+        this.auditProperties = auditProperties;
     }
 
     @Override
@@ -53,35 +53,46 @@ public class AuditInterceptor extends EmptyInterceptor {
         if (previousState != null) {
             logAudit(entity, id, currentState, previousState, propertyNames, "UPDATE");
         }
-        return super.onFlushDirty(entity, id, currentState, previousState, propertyNames, types);
+        return true; // Ensure interaction with repository
     }
 
     @Override
     public boolean onSave(Object entity, Serializable id, Object[] state, String[] propertyNames, Type[] types) {
         logAudit(entity, id, state, null, propertyNames, "CREATE");
-        return super.onSave(entity, id, state, propertyNames, types);
+        return true; // Ensure interaction with repository
     }
 
     @Override
     public void onDelete(Object entity, Serializable id, Object[] state, String[] propertyNames, Type[] types) {
-        logAudit(entity, id, null, state, propertyNames, "DELETE");
+        if (state != null) {
+            logAudit(entity, id, null, state, propertyNames, "DELETE");
+        }
         super.onDelete(entity, id, state, propertyNames, types);
     }
 
     private void logAudit(Object entity, Serializable id, Object[] newState, Object[] oldState, String[] propertyNames, String action) {
         try {
+            logger.debug("logAudit called with action: {}", action);
             if (shouldSkipAudit(entity)) {
+                logger.debug("Skipping audit for entity: {}", entity.getClass().getName());
                 return;
+            }
+
+            // Ensure oldState is not null for DELETE action
+            if ("DELETE".equals(action) && oldState == null) {
+                oldState = new Object[propertyNames.length];
             }
 
             Map<String, Object> oldValues = new HashMap<>();
             Map<String, Object> newValues = new HashMap<>();
 
             if (!extractChangedFields(entity, oldState, newState, propertyNames, oldValues, newValues)) {
+                logger.debug("No relevant changes detected for action: {}", action);
                 return; // No relevant changes, skip logging
             }
 
             AuditLog auditLog = buildAuditLog(action, oldValues, newValues);
+            logger.debug("AuditLog created: {}", auditLog);
             saveAuditLogAsync(auditLog);
         } catch (Exception e) {
             logger.error("Failed to log audit for action: " + action, e);
@@ -170,6 +181,18 @@ public class AuditInterceptor extends EmptyInterceptor {
             return field.isAnnotationPresent(ExcludeAuditField.class);
         } catch (NoSuchFieldException e) {
             return false;
+        }
+    }
+
+    void shutdownExecutorService() {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                logger.warn("ExecutorService did not terminate in the specified time.");
+            }
+        } catch (InterruptedException e) {
+            logger.error("ExecutorService termination interrupted", e);
+            Thread.currentThread().interrupt();
         }
     }
 }

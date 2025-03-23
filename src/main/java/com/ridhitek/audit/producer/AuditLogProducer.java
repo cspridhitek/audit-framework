@@ -5,6 +5,7 @@ import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
 import com.ridhitek.audit.service.AuditService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,9 +49,9 @@ public class AuditLogProducer {
     }
 
     @Retryable(
-            retryFor = {Exception.class},
-            maxAttemptsExpression = "3",
-            backoff = @Backoff(delayExpression = "2000")
+        value = {KafkaException.class},
+        maxAttemptsExpression = "#{${retry.maxAttempts:3}}",
+        backoff = @Backoff(delayExpression = "#{${retry.backoff.delay:2000}}")
     )
     @CircuitBreaker(name = "auditLogProducer", fallbackMethod = "fallbackLogToKafka")
     public void logToKafka(AuditLog auditLog) {

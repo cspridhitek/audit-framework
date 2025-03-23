@@ -85,6 +85,10 @@
             <artifactId>mysql-connector-j</artifactId>
             <version>8.2.0</version> <!-- Spring Boot 3.x compatibility -->
         </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+        </dependency>
 
         <!-- ✅ Lombok -->
         <dependency>
