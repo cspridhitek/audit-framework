@@ -6,12 +6,17 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 public class AuditServiceTest {
@@ -40,20 +45,24 @@ public class AuditServiceTest {
         AuditLog log1 = new AuditLog();
         AuditLog log2 = new AuditLog();
         List<AuditLog> logs = Arrays.asList(log1, log2);
+        Page<AuditLog> page = new PageImpl<>(logs);
 
-        when(auditLogRepository.findAll()).thenReturn(logs);
+        when(auditLogRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-//        List<AuditLog> retrievedLogs = auditService.getAllAuditLogs();
-//        assertEquals(2, retrievedLogs.size());
+        Page<AuditLog> retrievedLogs = auditService.getAllAuditLogs(0, 10, "id", "asc");
+        assertEquals(2, retrievedLogs.getContent().size());
     }
 
     @Test
-    public void testGetAuditLogById() {
-        AuditLog log = new AuditLog();
-        when(auditLogRepository.findById(1L)).thenReturn(Optional.of(log));
+    void testGetAuditLogById() {
+        AuditLog expectedAuditLog = new AuditLog();
+        expectedAuditLog.setId(1L);
+        when(auditLogRepository.findById(1L)).thenReturn(Optional.of(expectedAuditLog));
 
-        Optional<AuditLog> retrievedLog = auditService.getAuditLogById(1L);
-        assertEquals(log, retrievedLog);
+        Optional<AuditLog> actualAuditLog = auditService.getAuditLogById(1L);
+
+        assertTrue(actualAuditLog.isPresent(), "Audit log should be present");
+        assertEquals(expectedAuditLog, actualAuditLog.get(), "Audit log should match the expected value");
     }
 
     @Test

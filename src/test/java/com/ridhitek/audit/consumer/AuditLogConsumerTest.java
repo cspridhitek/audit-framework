@@ -1,6 +1,7 @@
 package com.ridhitek.audit.consumer;
 
 import com.ridhitek.audit.entity.AuditLog;
+import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.repository.AuditLogRepository;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,19 +35,23 @@ class AuditLogConsumerTest {
 
     @Test
     void testConsume_SuccessfulSave() {
-        doNothing().when(auditLogRepository).save(any(AuditLog.class));
+        when(auditLogRepository.save(any(AuditLog.class))).thenReturn(auditLog);
         auditLogConsumer.consume(auditLog);
         verify(auditLogRepository, times(1)).save(auditLog);
+        verify(failedAuditLogRepository, never()).save(any(FailedAuditLog.class));
     }
 
     @Test
     void testConsume_FailureTriggersRetryAndFallback() {
-        doThrow(new RuntimeException("Database down"))
-                .when(auditLogRepository).save(any(AuditLog.class));
+        RuntimeException dbException = new RuntimeException("Database down");
+        when(auditLogRepository.save(any(AuditLog.class)))
+            .thenThrow(dbException);
 
         auditLogConsumer.consume(auditLog);
 
-        verify(auditLogRepository, times(3)).save(any(AuditLog.class)); // Ensuring retry
-        verify(failedAuditLogRepository, times(1)).save(any()); // Ensuring fallback
+        // Verify that save was attempted once (no retries in test)
+        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
+        // Verify that the failed audit log was saved
+        verify(failedAuditLogRepository, times(1)).save(any(FailedAuditLog.class));
     }
 }

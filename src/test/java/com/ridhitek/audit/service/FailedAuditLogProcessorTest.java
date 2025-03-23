@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(MockitoExtension.class)
 class FailedAuditLogProcessorTest {
@@ -31,11 +32,10 @@ class FailedAuditLogProcessorTest {
     private FailedAuditLogProcessor failedAuditLogProcessor;
 
     private FailedAuditLog failedLog1, failedLog2;
+    private AuditLog auditLog1, auditLog2;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-
         failedLog1 = new FailedAuditLog();
         failedLog1.setId(1L);
         failedLog1.setAction("CREATE");
@@ -57,15 +57,32 @@ class FailedAuditLogProcessorTest {
         failedLog2.setOldValue("old update");
         failedLog2.setSignature("signature2");
         failedLog2.setFailureReason("Timeout");
+
+        // Create corresponding AuditLogs
+        auditLog1 = new AuditLog();
+        auditLog1.setAction(failedLog1.getAction());
+        auditLog1.setUserName(failedLog1.getUserName());
+        auditLog1.setDeviceDetails(failedLog1.getDeviceDetails());
+        auditLog1.setTimestamp(failedLog1.getTimestamp());
+        auditLog1.setNewValue(failedLog1.getNewValue());
+        auditLog1.setOldValue(failedLog1.getOldValue());
+        auditLog1.setSignature(failedLog1.getSignature());
+
+        auditLog2 = new AuditLog();
+        auditLog2.setAction(failedLog2.getAction());
+        auditLog2.setUserName(failedLog2.getUserName());
+        auditLog2.setDeviceDetails(failedLog2.getDeviceDetails());
+        auditLog2.setTimestamp(failedLog2.getTimestamp());
+        auditLog2.setNewValue(failedLog2.getNewValue());
+        auditLog2.setOldValue(failedLog2.getOldValue());
+        auditLog2.setSignature(failedLog2.getSignature());
     }
 
     @Test
     void testRetryFailedLogs_SuccessfulRetry() {
         List<FailedAuditLog> failedLogs = Arrays.asList(failedLog1, failedLog2);
-
         when(failedAuditLogRepository.findAll()).thenReturn(failedLogs);
         doNothing().when(auditLogProducer).logToKafka(any(AuditLog.class));
-        doNothing().when(failedAuditLogRepository).delete(any(FailedAuditLog.class));
 
         failedAuditLogProcessor.retryFailedLogs();
 
@@ -76,7 +93,6 @@ class FailedAuditLogProcessorTest {
     @Test
     void testRetryFailedLogs_FailedRetry() {
         List<FailedAuditLog> failedLogs = Arrays.asList(failedLog1, failedLog2);
-
         when(failedAuditLogRepository.findAll()).thenReturn(failedLogs);
         doThrow(new RuntimeException("Kafka still down")).when(auditLogProducer).logToKafka(any(AuditLog.class));
 

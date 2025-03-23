@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@SpringBootTest(classes = AsyncConfig.class)
+@SpringBootTest(classes = {AsyncConfig.class, AsyncConfigTest.TestAsyncService.class}) // Include TestAsyncService in the context
 class AsyncConfigTest {
 
     @Test

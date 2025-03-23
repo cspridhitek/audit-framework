@@ -4,19 +4,25 @@ import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
 import com.ridhitek.audit.service.AuditService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,7 +44,11 @@ class AuditLogProducerTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        System.setProperty("AUDIT_LOG_SECRET_KEY", "test-secret-key");
+        ReflectionTestUtils.setField(auditLogProducer, "auditTopic", "test-topic");
+        ReflectionTestUtils.setField(auditLogProducer, "maxAttempts", 3);
+        ReflectionTestUtils.setField(auditLogProducer, "backoffDelay", 100L);
+        
         auditLog = new AuditLog();
         auditLog.setAction("CREATE");
         auditLog.setUserName("testUser");
@@ -51,32 +61,107 @@ class AuditLogProducerTest {
 
     @Test
     void testLogToKafka_Success() {
-        // Mock successful Kafka message sending
-        CompletableFuture<SendResult<String, AuditLog>> future = CompletableFuture.completedFuture(mock(SendResult.class));
+        SendResult<String, AuditLog> sendResult = mock(SendResult.class);
+        CompletableFuture<SendResult<String, AuditLog>> future = CompletableFuture.completedFuture(sendResult);
         when(kafkaTemplate.send(anyString(), any(AuditLog.class))).thenReturn(future);
 
-        // Call the method
-        auditLogProducer.logToKafka(auditLog);
+        assertDoesNotThrow(() -> auditLogProducer.logToKafka(auditLog));
 
-        // Verify Kafka template was used
         verify(kafkaTemplate, times(1)).send(anyString(), any(AuditLog.class));
-
-        // Ensure failedAuditLogRepository was not used
         verify(failedAuditLogRepository, never()).save(any(FailedAuditLog.class));
     }
 
     @Test
     void testLogToKafka_Failure() {
-        // Mock Kafka failure
+        // Simulate Kafka being down
         CompletableFuture<SendResult<String, AuditLog>> future = new CompletableFuture<>();
         future.completeExceptionally(new RuntimeException("Kafka error"));
-
         when(kafkaTemplate.send(anyString(), any(AuditLog.class))).thenReturn(future);
 
-        // Call the method
-        auditLogProducer.logToKafka(auditLog);
+        // Mock successful save to fallback storage
+        FailedAuditLog expectedFailedLog = new FailedAuditLog();
+        when(failedAuditLogRepository.save(any(FailedAuditLog.class))).thenReturn(expectedFailedLog);
 
-        // Verify that failed audit log is saved
+        // Execute and verify no exceptions are thrown
+        assertDoesNotThrow(() -> auditLogProducer.logToKafka(auditLog));
+
+        // Verify Kafka was attempted
+        verify(kafkaTemplate, times(1)).send(anyString(), any(AuditLog.class));
+
+        // Verify fallback storage was used
+        ArgumentCaptor<FailedAuditLog> failedLogCaptor = ArgumentCaptor.forClass(FailedAuditLog.class);
+        verify(failedAuditLogRepository, times(1)).save(failedLogCaptor.capture());
+        
+        FailedAuditLog capturedLog = failedLogCaptor.getValue();
+        assertEquals(auditLog.getAction(), capturedLog.getAction());
+        assertEquals(auditLog.getUserName(), capturedLog.getUserName());
+        assertTrue(capturedLog.getFailureReason().contains("Kafka error"));
+    }
+
+    @Test
+    void testCircuitBreaker_Fallback() {
+        RuntimeException exception = new RuntimeException("Circuit open");
+        FailedAuditLog savedLog = new FailedAuditLog();
+        when(failedAuditLogRepository.save(any(FailedAuditLog.class))).thenReturn(savedLog);
+        
+        assertDoesNotThrow(() -> auditLogProducer.fallbackLogToKafka(auditLog, exception));
+        
+        verify(failedAuditLogRepository, times(1)).save(argThat(log -> 
+            log.getAction().equals(auditLog.getAction()) &&
+            log.getUserName().equals(auditLog.getUserName()) &&
+            log.getFailureReason().equals("Circuit open")
+        ));
+    }
+
+    @Test
+    void testLogToKafka_SaveFailedLogError() {
+        // Simulate Kafka being down
+        CompletableFuture<SendResult<String, AuditLog>> future = new CompletableFuture<>();
+        future.completeExceptionally(new RuntimeException("Kafka error"));
+        when(kafkaTemplate.send(anyString(), any(AuditLog.class))).thenReturn(future);
+
+        // Simulate failure to save to fallback storage
+        when(failedAuditLogRepository.save(any(FailedAuditLog.class)))
+            .thenThrow(new RuntimeException("DB error"));
+
+        // Even with both Kafka and DB failures, the application should not throw
+        assertDoesNotThrow(() -> auditLogProducer.logToKafka(auditLog));
+
+        // Verify attempts were made
+        verify(kafkaTemplate, times(1)).send(anyString(), any(AuditLog.class));
         verify(failedAuditLogRepository, times(1)).save(any(FailedAuditLog.class));
+    }
+
+    @Test
+    void testLogToKafka_ValidationFailure() {
+        auditLog.setAction(null); // Invalid state
+        
+        assertDoesNotThrow(() -> auditLogProducer.logToKafka(auditLog));
+        
+        verify(kafkaTemplate, never()).send(anyString(), any(AuditLog.class));
+        verify(failedAuditLogRepository, never()).save(any(FailedAuditLog.class));
+    }
+
+    @Test
+    void testLogToKafka_KafkaTimeout() {
+        // Simulate Kafka timeout by creating an incomplete future
+        CompletableFuture<SendResult<String, AuditLog>> future = new CompletableFuture<>();
+        when(kafkaTemplate.send(anyString(), any(AuditLog.class))).thenReturn(future);
+
+        // Mock successful save to fallback storage
+        FailedAuditLog savedLog = new FailedAuditLog();
+        when(failedAuditLogRepository.save(any(FailedAuditLog.class))).thenReturn(savedLog);
+
+        // Execute and verify no exceptions are thrown
+        assertDoesNotThrow(() -> auditLogProducer.logToKafka(auditLog));
+
+        // Verify fallback behavior
+        verify(kafkaTemplate, times(1)).send(anyString(), any(AuditLog.class));
+        verify(failedAuditLogRepository, times(1)).save(any(FailedAuditLog.class));
+    }
+
+    @AfterEach
+    void tearDown() {
+        System.clearProperty("AUDIT_LOG_SECRET_KEY");
     }
 }

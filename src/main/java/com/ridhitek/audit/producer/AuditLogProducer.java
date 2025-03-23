@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @EnableRetry
 @Service
@@ -37,19 +38,19 @@ public class AuditLogProducer {
     @Value("${spring.kafka.topic}")
     private String auditTopic;
 
+    @Value("${kafka.send.timeout:5000}")
+    private long kafkaSendTimeout;
+
     public AuditLogProducer(KafkaTemplate<String, AuditLog> kafkaTemplate, AuditService auditService, FailedAuditLogRepository failedAuditLogRepository) {
         this.kafkaTemplate = kafkaTemplate;
         this.auditService = auditService;
         this.failedAuditLogRepository = failedAuditLogRepository;
     }
 
-    /**
-     * Logs an audit message to Kafka with retry mechanism.
-     */
     @Retryable(
             retryFor = {Exception.class},
-            maxAttemptsExpression = "#{${retry.maxAttempts}}",
-            backoff = @Backoff(delayExpression = "#{${retry.backoff.delay}}")
+            maxAttemptsExpression = "3",
+            backoff = @Backoff(delayExpression = "2000")
     )
     @CircuitBreaker(name = "auditLogProducer", fallbackMethod = "fallbackLogToKafka")
     public void logToKafka(AuditLog auditLog) {
@@ -61,19 +62,30 @@ public class AuditLogProducer {
         try {
             CompletableFuture<SendResult<String, AuditLog>> future = kafkaTemplate.send(auditTopic, auditLog);
 
-            future.handle((result, ex) -> {
-                if (ex != null) {
-                    logger.error("Message sending failed: " + auditLog + ", Error: " + ex.getMessage());
-                    saveFailedAuditLog(auditLog, ex.getMessage());
-                } else {
-                    logger.info("Message sent successfully to partition: " + result.getRecordMetadata().partition());
-                }
-                return null;
-            });
+            // Add timeout to the future
+            future.completeOnTimeout(null, kafkaSendTimeout, TimeUnit.MILLISECONDS)
+                .whenComplete((result, ex) -> {
+                    if (ex != null || result == null) {
+                        String errorMessage = ex != null ? ex.getMessage() : "Kafka send timeout";
+                        logger.error("Message sending failed: {}, Error: {}", auditLog, errorMessage);
+                        saveFailedAuditLog(auditLog, errorMessage);
+                    } else {
+                        logger.info("Message sent successfully to partition: {}", result.getRecordMetadata().partition());
+                    }
+                });
 
+            // Wait for the future to complete
+            try {
+                future.get(kafkaSendTimeout, TimeUnit.MILLISECONDS);
+            } catch (Exception e) {
+                // Timeout or other error occurred, but we've already handled it in the whenComplete
+                // No need to throw, as the message is saved to failed audit log
+                logger.warn("Kafka send operation did not complete: {}", e.getMessage());
+            }
         } catch (Exception e) {
-            logger.error("Exception while sending Kafka message: " + e.getCause());
-            saveFailedAuditLog(auditLog, e.getCause().getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            logger.error("Exception while sending Kafka message: {}", errorMessage);
+            saveFailedAuditLog(auditLog, errorMessage);
         }
     }
 
@@ -110,7 +122,6 @@ public class AuditLogProducer {
             failedAuditLogRepository.save(failedAuditLog);
             logger.info("Failed audit log saved successfully.");
         } catch (Exception e) {
-            // Log the error if saving the failed audit log also fails
             logger.error("Failed to save failed audit log: {}", e.getMessage(), e);
         }
     }

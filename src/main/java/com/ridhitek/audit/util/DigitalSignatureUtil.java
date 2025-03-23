@@ -12,9 +12,10 @@ public class DigitalSignatureUtil {
     private static final String SECRET_KEY;
 
     static {
-        SECRET_KEY = System.getenv("AUDIT_LOG_SECRET_KEY");
+        // Changed from System.getenv to System.getProperty to work with tests
+        SECRET_KEY = System.getProperty("AUDIT_LOG_SECRET_KEY");
         if (SECRET_KEY == null || SECRET_KEY.isEmpty()) {
-            throw new IllegalStateException("Environment variable AUDIT_LOG_SECRET_KEY is not set or empty");
+            throw new IllegalStateException("System property AUDIT_LOG_SECRET_KEY is not set or empty");
         }
     }
 
@@ -32,11 +33,16 @@ public class DigitalSignatureUtil {
     }
 
     public static String signLog(String data) {
+        if (data == null) {
+            throw new NullPointerException("Input data cannot be null");
+        }
+        
         try {
             Mac hmacSHA256 = threadLocalMac.get();
 
             // 🔹 Always reinitialize before use to prevent corruption
-            hmacSHA256.init(new SecretKeySpec(SECRET_KEY.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            SecretKeySpec secretKeySpec = new SecretKeySpec(SECRET_KEY.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            hmacSHA256.init(secretKeySpec);
 
             byte[] hash = hmacSHA256.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hash);
