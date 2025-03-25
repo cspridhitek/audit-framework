@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "audit")
 public class AuditProperties {
 
-    @NotBlank(message = "Handler type must not be blank")
+    @NotBlank(message = "Handler type must not be  blank")
     @Pattern(regexp = "database|kafka_database", message = "Handler type must be either 'database' or 'kafka_database'")
     private String handlerType;
 
