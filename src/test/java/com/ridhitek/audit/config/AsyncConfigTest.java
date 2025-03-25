@@ -4,13 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@SpringBootTest(classes = AsyncConfig.class)
+@SpringBootTest(classes = {AsyncConfig.class, AsyncConfigTest.TestAsyncService.class})
 class AsyncConfigTest {
 
     @Test
@@ -25,7 +25,7 @@ class AsyncConfigTest {
         assertNotNull(future);
     }
 
-    @Service
+    @Component
     static class TestAsyncService {
         @Async
         public CompletableFuture<String> asyncMethod() {

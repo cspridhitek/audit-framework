@@ -7,35 +7,35 @@ import com.ridhitek.audit.repository.FailedAuditLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(SpringExtension.class)
+@SpringBootTest
 class FailedAuditLogProcessorTest {
 
-    @Mock
+    @MockBean
     private AuditLogProducer auditLogProducer;
 
-    @Mock
+    @MockBean
     private FailedAuditLogRepository failedAuditLogRepository;
 
-    @InjectMocks
     private FailedAuditLogProcessor failedAuditLogProcessor;
 
     private FailedAuditLog failedLog1, failedLog2;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-
+        failedAuditLogProcessor = new FailedAuditLogProcessor(auditLogProducer, failedAuditLogRepository);
+        
         failedLog1 = new FailedAuditLog();
         failedLog1.setId(1L);
         failedLog1.setAction("CREATE");
@@ -57,6 +57,9 @@ class FailedAuditLogProcessorTest {
         failedLog2.setOldValue("old update");
         failedLog2.setSignature("signature2");
         failedLog2.setFailureReason("Timeout");
+        
+        doNothing().when(auditLogProducer).logToKafka(any(AuditLog.class));
+        doNothing().when(failedAuditLogRepository).delete(any(FailedAuditLog.class));
     }
 
     @Test

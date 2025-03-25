@@ -62,14 +62,15 @@ public class AuditLogProducer {
                     logger.error("Message sending failed: " + auditLog + ", Error: " + ex.getMessage());
                     saveFailedAuditLog(auditLog, ex.getMessage());
                 } else {
-                   logger.error("Message sent successfully to partition: " + result.getRecordMetadata().partition());
+                    logger.info("Message sent successfully to partition: " + result.getRecordMetadata().partition());
                 }
                 return null;
             });
 
         } catch (Exception e) {
-            logger.error("Exception while sending Kafka message: " + e.getCause());
-            saveFailedAuditLog(auditLog, e.getCause().getMessage());
+            String errorMessage = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
+            logger.error("Exception while sending Kafka message: " + errorMessage);
+            saveFailedAuditLog(auditLog, errorMessage);
         }
 
     }
