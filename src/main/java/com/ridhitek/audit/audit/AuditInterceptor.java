@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ridhitek.audit.annotation.ExcludeAuditField;
 import com.ridhitek.audit.config.AuditProperties;
-import com.ridhitek.audit.consumer.AuditLogConsumer;
 import com.ridhitek.audit.entity.AuditLog;
 import com.ridhitek.audit.entity.FailedAuditLog;
 import com.ridhitek.audit.producer.AuditLogProducer;
@@ -16,7 +15,7 @@ import org.hibernate.type.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Component;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -26,6 +25,9 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -34,6 +36,7 @@ public class AuditInterceptor extends EmptyInterceptor {
     private static final Logger logger = LoggerFactory.getLogger(AuditInterceptor.class);
     private final ApplicationContext context;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     public AuditInterceptor(ApplicationContext context) {
         this.context = context;
@@ -86,7 +89,7 @@ public class AuditInterceptor extends EmptyInterceptor {
             }
 
             AuditLog auditLog = buildAuditLog(action, oldValues, newValues);
-            saveAuditLog(auditLog);
+            saveAuditLogAsync(auditLog);
         } catch (Exception e) {
             logger.error("Failed to log audit for action: " + action, e);
         }
@@ -117,6 +120,7 @@ public class AuditInterceptor extends EmptyInterceptor {
         return hasChanges;
     }
 
+
     private AuditLog buildAuditLog(String action, Map<String, Object> oldValues, Map<String, Object> newValues) {
         AuditLog auditLog = new AuditLog();
         String changedBy = "SYSTEM";
@@ -132,6 +136,9 @@ public class AuditInterceptor extends EmptyInterceptor {
         return auditLog;
     }
 
+    public void saveAuditLogAsync(AuditLog auditLog) {
+        executorService.submit(() -> saveAuditLog(auditLog));
+    }
 
     @Transactional
     public void saveAuditLog(AuditLog auditLog) {
@@ -159,27 +166,54 @@ public class AuditInterceptor extends EmptyInterceptor {
         }
     }
 
+    @Transactional
     private void saveToDatabase(AuditLog auditLog) {
+        if (auditLog == null) {
+            logger.warn("Attempted to save a null audit log. Skipping.");
+            return;
+        }
+
         try {
-           logger.info("Saving to Database: " + auditLog);
+            logger.info("Saving to Database: {}", auditLog);
             getAuditLogRepository().save(auditLog);
+            logger.info("Audit log saved successfully with ID: {}", auditLog.getId());
+
+        } catch (DataIntegrityViolationException e) {
+            logger.error("Database constraint violation while saving audit log: {}", e.getMessage(), e);
         } catch (Exception e) {
-            logger.error("Failed to save audit log to database", e);
+            logger.error("Unexpected error while saving audit log", e);
         }
     }
+
 
     private String getAuditHandlerType() {
         return getAuditProperties().getHandlerType();
     }
 
     private String convertToJson(Map<String, Object> map) {
-        try {
-            boolean allNull = map.values().stream().allMatch(Objects::isNull);
-            return allNull ? "{}" : objectMapper.writeValueAsString(map);
-        } catch (JsonProcessingException e) {
+        if (map == null || map.isEmpty()) {
             return "{}";
         }
+
+        try {
+            // Filter out null values for better readability
+            Map<String, Object> nonNullMap = map.entrySet().stream()
+                    .filter(entry -> entry.getValue() != null)
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+            // Return empty JSON if all values are null
+            if (nonNullMap.isEmpty()) {
+                return "{}";
+            }
+
+            return objectMapper.writeValueAsString(nonNullMap);
+
+        } catch (JsonProcessingException e) {
+            logger.error("Failed to serialize map to JSON", e);
+            return "{\"error\":\"serialization_failed\"}";
+        }
     }
+
 
     private String getClientIpAddress() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();

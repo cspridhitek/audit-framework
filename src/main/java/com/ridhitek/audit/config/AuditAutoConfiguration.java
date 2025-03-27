@@ -1,13 +1,12 @@
 package com.ridhitek.audit.config;
 
 import com.ridhitek.audit.audit.AuditInterceptor;
-import org.hibernate.Interceptor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 
 @AutoConfiguration
 @ComponentScan(basePackages = "com.ridhitek.audit")  // Ensures Audit beans are registered
@@ -16,6 +15,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
         entityManagerFactoryRef = "auditEntityManagerFactory",
         transactionManagerRef = "auditTransactionManager"
 )
+@EnableConfigurationProperties
 public class AuditAutoConfiguration {
 
     @Bean

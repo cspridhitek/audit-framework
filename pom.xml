@@ -37,7 +37,7 @@
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
-            <version>3.3.0</version>
+            <version>3.1.2</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -88,10 +88,20 @@
             <version>2.3.1</version>
         </dependency>
         <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>  <!-- Use the latest compatible version -->
+        </dependency>
+        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>4.0.0</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.16</version>  <!-- Force the latest version -->
         </dependency>
         <!-- JUnit 5 API -->
         <dependency>
@@ -128,23 +138,12 @@
                 <version>3.8.1</version>  <!-- Use a stable version -->
                 <configuration>
                     <release>17</release>  <!-- Ensure compatibility with Java 17 -->
-                    <compilerArgs>
-                        <arg>--add-opens</arg>
-                        <arg>jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
-                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.2.0</version>
-                <configuration>
-                    <excludes>
-                        <exclude>**/Test*.class</exclude>
-                        <exclude>**/*Test.class</exclude>
-                        <exclude>**/*Tests.class</exclude>
-                    </excludes>
-                </configuration>
             </plugin>
 
         </plugins>

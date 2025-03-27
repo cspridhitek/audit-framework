@@ -25,14 +25,7 @@ public class FailedAuditLogProcessor {
 
         for (FailedAuditLog log : failedLogs) {
             try {
-                AuditLog auditLog = new AuditLog();
-                auditLog.setAction(log.getAction());
-                auditLog.setUserName(log.getUserName());
-                auditLog.setDeviceDetails(log.getDeviceDetails());
-                auditLog.setTimestamp(log.getTimestamp());
-                auditLog.setNewValue(log.getNewValue());
-                auditLog.setOldValue(log.getOldValue());
-                auditLog.setSignature(log.getSignature());
+                AuditLog auditLog = convertToAuditLog(log);
                 auditLogProducer.logToKafka(auditLog);
                 failedAuditLogRepository.delete(log); // Remove log after successful reprocessing
                 System.out.println("Retried and sent failed audit log successfully.");
@@ -40,5 +33,17 @@ public class FailedAuditLogProcessor {
                 System.err.println("Retrying failed audit log failed again: " + log.getFailureReason());
             }
         }
+    }
+
+    private AuditLog convertToAuditLog(FailedAuditLog failedLog) {
+        AuditLog auditLog = new AuditLog();
+        auditLog.setAction(failedLog.getAction());
+        auditLog.setUserName(failedLog.getUserName());
+        auditLog.setDeviceDetails(failedLog.getDeviceDetails());
+        auditLog.setTimestamp(failedLog.getTimestamp());
+        auditLog.setNewValue(failedLog.getNewValue());
+        auditLog.setOldValue(failedLog.getOldValue());
+        auditLog.setSignature(failedLog.getSignature());
+        return auditLog;
     }
 }
