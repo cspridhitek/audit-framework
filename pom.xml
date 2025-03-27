@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
     <properties>
         <java.version>17</java.version>
-        <spring.boot.version>3.3.7</spring.boot.version>
+        <spring.boot.version>3.4.3</spring.boot.version>
     </properties>
 
     <dependencies>
@@ -37,7 +37,7 @@
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
-            <version>3.3.0</version>
+            <version>3.3.3</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -58,7 +58,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
-            <version>3.2.0</version>  <!-- Ensure the correct version is used -->
+            <version>${spring.boot.version}</version>  <!-- Ensure the correct version is used -->
         </dependency>
         <dependency>
             <groupId>jakarta.xml.bind</groupId>
