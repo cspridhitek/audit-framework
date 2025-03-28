@@ -10,9 +10,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationContext;
 import java.io.Serializable;
+import java.util.concurrent.TimeUnit;
+
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 class AuditInterceptorTest {
 
@@ -37,45 +41,70 @@ class AuditInterceptorTest {
         when(context.getBean(AuditLogRepository.class)).thenReturn(auditLogRepository);
         when(context.getBean(AuditLogProducer.class)).thenReturn(auditLogProducer);
         when(context.getBean(AuditProperties.class)).thenReturn(auditProperties);
+        
+        // Configure the default audit type for tests
+        when(auditProperties.getHandlerType()).thenReturn("database");
+        
+        // Mock the repository save method to return the entity
+        when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
-    void testOnSave_CreatesAuditLog() {
-        Object entity = new Object();
+    void testOnSave_CreatesAuditLog() throws InterruptedException {
+        // Setup test data
+        Object entity = new TestEntity(); // Using a test entity instead of AuditLog
         Serializable id = 1L;
         Object[] state = {"value1"};
         String[] propertyNames = {"field1"};
         Type[] types = new Type[1];
 
-        when(auditProperties.getHandlerType()).thenReturn("database");
+        // Execute the method under test
         auditInterceptor.onSave(entity, id, state, propertyNames, types);
-        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
+
+        // Wait for the async task to complete
+        TimeUnit.SECONDS.sleep(1);
+
+        // Verify repository was called with correct data
+        verify(auditLogRepository, timeout(5000).times(1)).save(any(AuditLog.class));
     }
 
     @Test
-    void testOnFlushDirty_UpdatesAuditLog() {
-        Object entity = new Object();
+    void testOnFlushDirty_UpdatesAuditLog() throws InterruptedException {
+        // Setup test data
+        Object entity = new TestEntity(); // Using a test entity instead of AuditLog
         Serializable id = 1L;
         Object[] currentState = {"newValue"};
         Object[] previousState = {"oldValue"};
         String[] propertyNames = {"field1"};
         Type[] types = new Type[1];
 
-        when(auditProperties.getHandlerType()).thenReturn("database");
+        // Execute the method under test
         auditInterceptor.onFlushDirty(entity, id, currentState, previousState, propertyNames, types);
-        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
+
+        // Wait for the async task to complete
+        TimeUnit.SECONDS.sleep(1);
+
+        // Verify repository was called with correct data
+        verify(auditLogRepository, timeout(5000).times(1)).save(any(AuditLog.class));
     }
 
     @Test
-    void testOnDelete_DeletesAuditLog() {
-        Object entity = new Object();
+    void testOnDelete_DeletesAuditLog() throws InterruptedException {
+        // Setup test data
+        Object entity = new TestEntity(); // Using a test entity instead of AuditLog
         Serializable id = 1L;
         Object[] state = {"value1"};
         String[] propertyNames = {"field1"};
         Type[] types = new Type[1];
 
+        // Execute the method under test
         auditInterceptor.onDelete(entity, id, state, propertyNames, types);
-        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
+
+        // Wait for the async task to complete
+        TimeUnit.SECONDS.sleep(1);
+
+        // Verify repository was called with correct data
+        verify(auditLogRepository, timeout(5000).times(1)).save(any(AuditLog.class));
     }
 
     @Test
@@ -85,6 +114,19 @@ class AuditInterceptorTest {
         auditInterceptor.saveAuditLog(auditLog);
         verify(auditLogProducer, times(1)).logToKafka(auditLog);
         verify(auditLogRepository, never()).save(auditLog);
+    }
+    
+    // Test entity class for use in tests
+    static class TestEntity {
+        private String field1;
+        
+        public String getField1() {
+            return field1;
+        }
+        
+        public void setField1(String field1) {
+            this.field1 = field1;
+        }
     }
 }
 

@@ -8,8 +8,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -19,10 +19,10 @@ import static org.mockito.Mockito.*;
 @SpringBootTest
 class AuditLogConsumerTest {
 
-    @MockBean
+    @Mock
     private FailedAuditLogRepository failedAuditLogRepository;
 
-    @MockBean
+    @Mock
     private AuditLogRepository auditLogRepository;
 
     private AuditLogConsumer auditLogConsumer;
@@ -31,6 +31,7 @@ class AuditLogConsumerTest {
 
     @BeforeEach
     void setUp() {
+        MockitoAnnotations.openMocks(this);
         auditLogConsumer = new AuditLogConsumer(failedAuditLogRepository, auditLogRepository);
         
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -55,7 +56,7 @@ class AuditLogConsumerTest {
 
         auditLogConsumer.consume(auditLog);
 
-        verify(auditLogRepository, times(1)).save(any(AuditLog.class)); 
+        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
         verify(failedAuditLogRepository, times(1)).save(any(FailedAuditLog.class));
     }
 }

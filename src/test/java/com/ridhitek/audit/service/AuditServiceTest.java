@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 public class AuditServiceTest {
@@ -53,7 +54,8 @@ public class AuditServiceTest {
         when(auditLogRepository.findById(1L)).thenReturn(Optional.of(log));
 
         Optional<AuditLog> retrievedLog = auditService.getAuditLogById(1L);
-        assertEquals(log, retrievedLog);
+        assertTrue(retrievedLog.isPresent());
+        assertEquals(log, retrievedLog.get());
     }
 
     @Test

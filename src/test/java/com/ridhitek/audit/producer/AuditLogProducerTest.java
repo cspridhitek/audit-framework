@@ -7,8 +7,9 @@ import com.ridhitek.audit.service.AuditService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -25,13 +26,13 @@ import static org.mockito.Mockito.*;
 @SpringBootTest
 class AuditLogProducerTest {
 
-    @MockBean
+    @Mock
     private KafkaTemplate<String, AuditLog> kafkaTemplate;
 
-    @MockBean
+    @Mock
     private AuditService auditService;
 
-    @MockBean
+    @Mock
     private FailedAuditLogRepository failedAuditLogRepository;
 
     private AuditLogProducer auditLogProducer;
@@ -40,6 +41,7 @@ class AuditLogProducerTest {
 
     @BeforeEach
     void setUp() {
+        MockitoAnnotations.openMocks(this);
         auditLogProducer = new AuditLogProducer(kafkaTemplate, auditService, failedAuditLogRepository);
         
         // Set required properties

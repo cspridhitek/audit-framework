@@ -54,6 +54,9 @@ public class AuditDatabaseConfig {
         AuditInterceptor auditInterceptor = context.getBean(AuditInterceptor.class);
         properties.put("hibernate.session_factory.interceptor", auditInterceptor);
 
+        // Update Hibernate dialect to the recommended version
+        properties.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+
         em.setJpaProperties(properties);
 
         return em;

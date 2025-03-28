@@ -6,10 +6,11 @@ import com.ridhitek.audit.producer.AuditLogProducer;
 import com.ridhitek.audit.repository.FailedAuditLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -17,8 +18,8 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(SpringExtension.class)
 @SpringBootTest
 class FailedAuditLogProcessorTest {
 
@@ -28,14 +29,13 @@ class FailedAuditLogProcessorTest {
     @MockBean
     private FailedAuditLogRepository failedAuditLogRepository;
 
+    @Autowired
     private FailedAuditLogProcessor failedAuditLogProcessor;
 
     private FailedAuditLog failedLog1, failedLog2;
 
     @BeforeEach
     void setUp() {
-        failedAuditLogProcessor = new FailedAuditLogProcessor(auditLogProducer, failedAuditLogRepository);
-        
         failedLog1 = new FailedAuditLog();
         failedLog1.setId(1L);
         failedLog1.setAction("CREATE");
@@ -57,35 +57,64 @@ class FailedAuditLogProcessorTest {
         failedLog2.setOldValue("old update");
         failedLog2.setSignature("signature2");
         failedLog2.setFailureReason("Timeout");
-        
-        doNothing().when(auditLogProducer).logToKafka(any(AuditLog.class));
-        doNothing().when(failedAuditLogRepository).delete(any(FailedAuditLog.class));
+
+        // Reset interactions before each test
+        reset(auditLogProducer, failedAuditLogRepository);
     }
 
     @Test
     void testRetryFailedLogs_SuccessfulRetry() {
+        // Set up test data
         List<FailedAuditLog> failedLogs = Arrays.asList(failedLog1, failedLog2);
-
+        
+        // Configure mocks
         when(failedAuditLogRepository.findAll()).thenReturn(failedLogs);
-        doNothing().when(auditLogProducer).logToKafka(any(AuditLog.class));
-        doNothing().when(failedAuditLogRepository).delete(any(FailedAuditLog.class));
-
+        
+        // Call the method under test
         failedAuditLogProcessor.retryFailedLogs();
-
+        
+        // Verify that logToKafka was called exactly twice (once for each failed log)
         verify(auditLogProducer, times(2)).logToKafka(any(AuditLog.class));
+        
+        // Verify that delete was called exactly twice (once for each failed log)
         verify(failedAuditLogRepository, times(2)).delete(any(FailedAuditLog.class));
+        
+        // Capture and verify the audit logs
+        ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogProducer, times(2)).logToKafka(auditLogCaptor.capture());
+        
+        List<AuditLog> capturedLogs = auditLogCaptor.getAllValues();
+        assertEquals(2, capturedLogs.size());
+        
+        // Verify first captured log
+        AuditLog firstLog = capturedLogs.get(0);
+        assertEquals("CREATE", firstLog.getAction());
+        assertEquals("testUser1", firstLog.getUserName());
+        
+        // Verify second captured log
+        AuditLog secondLog = capturedLogs.get(1);
+        assertEquals("UPDATE", secondLog.getAction());
+        assertEquals("testUser2", secondLog.getUserName());
     }
 
     @Test
     void testRetryFailedLogs_FailedRetry() {
+        // Set up test data
         List<FailedAuditLog> failedLogs = Arrays.asList(failedLog1, failedLog2);
-
+        
+        // Configure mocks
         when(failedAuditLogRepository.findAll()).thenReturn(failedLogs);
+        
+        // Configure auditLogProducer to throw exception when logToKafka is called
         doThrow(new RuntimeException("Kafka still down")).when(auditLogProducer).logToKafka(any(AuditLog.class));
-
+        
+        // Call the method under test
         failedAuditLogProcessor.retryFailedLogs();
-
+        
+        // Verify that logToKafka was called exactly twice (once for each failed log)
         verify(auditLogProducer, times(2)).logToKafka(any(AuditLog.class));
+        
+        // Verify that delete was never called since the retry failed
         verify(failedAuditLogRepository, never()).delete(any(FailedAuditLog.class));
     }
 }

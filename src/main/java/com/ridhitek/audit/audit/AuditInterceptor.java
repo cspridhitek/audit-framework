@@ -10,7 +10,7 @@ import com.ridhitek.audit.producer.AuditLogProducer;
 import com.ridhitek.audit.repository.AuditLogRepository;
 import com.ridhitek.audit.util.DigitalSignatureUtil;
 import jakarta.transaction.Transactional;
-import org.hibernate.EmptyInterceptor;
+import org.hibernate.Interceptor;
 import org.hibernate.type.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-public class AuditInterceptor extends EmptyInterceptor {
+public class AuditInterceptor implements Interceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditInterceptor.class);
     private final ApplicationContext context;
@@ -60,19 +60,18 @@ public class AuditInterceptor extends EmptyInterceptor {
         if (previousState != null) {
             logAudit(entity, id, currentState, previousState, propertyNames, "UPDATE");
         }
-        return super.onFlushDirty(entity, id, currentState, previousState, propertyNames, types);
+        return false;
     }
 
     @Override
     public boolean onSave(Object entity, Serializable id, Object[] state, String[] propertyNames, Type[] types) {
         logAudit(entity, id, state, null, propertyNames, "CREATE");
-        return super.onSave(entity, id, state, propertyNames, types);
+        return false;
     }
 
     @Override
     public void onDelete(Object entity, Serializable id, Object[] state, String[] propertyNames, Type[] types) {
         logAudit(entity, id, null, state, propertyNames, "DELETE");
-        super.onDelete(entity, id, state, propertyNames, types);
     }
 
     private void logAudit(Object entity, Serializable id, Object[] newState, Object[] oldState, String[] propertyNames, String action) {
