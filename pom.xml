@@ -58,7 +58,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
-            <version>3.2.0</version>  <!-- Ensure the correct version is used -->
+            <version>3.4.3</version>  <!-- Ensure the correct version is used -->
         </dependency>
         <dependency>
             <groupId>jakarta.xml.bind</groupId>
