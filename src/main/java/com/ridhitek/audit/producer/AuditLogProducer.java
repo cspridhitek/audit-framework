@@ -50,8 +50,8 @@ public class AuditLogProducer {
      */
     @Retryable(
             retryFor = {Exception.class},
-            maxAttemptsExpression = "#{AuditLogProducer.maxAttempts}",
-            backoff = @Backoff(delayExpression = "#{AuditLogProducer.backoffDelay}")
+            maxAttemptsExpression = "${retry.maxAttempts:3}",
+            backoff = @Backoff(delayExpression = "${retry.backoff.delay:2000}")
     )
     @CircuitBreaker(name = "auditLogProducer", fallbackMethod = "fallbackLogToKafka")
     public void logToKafka(AuditLog auditLog) {
